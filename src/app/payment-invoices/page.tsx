@@ -183,7 +183,11 @@ export default function PaymentInvoicesPage() {
               {filteredInvoices.map((inv) => (
                 <tr key={inv.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
                   <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-gray-800">{inv.client}</div>
+                    {inv.driveFileId ? (
+                      <a href={`https://drive.google.com/file/d/${inv.driveFileId}/view`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline">{inv.client}</a>
+                    ) : (
+                      <div className="text-sm font-medium text-gray-800">{inv.client}</div>
+                    )}
                     {inv.pdfFileName && <div className="text-xs text-gray-400 mt-0.5">{inv.pdfFileName}</div>}
                     {inv.memo && <div className="text-xs text-gray-400 mt-0.5">{inv.memo}</div>}
                   </td>

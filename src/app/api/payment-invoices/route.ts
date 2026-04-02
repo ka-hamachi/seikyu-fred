@@ -19,6 +19,7 @@ export async function GET() {
     dueDate: row.due_date || "",
     pdfFileName: row.pdf_file_name || "",
     sourceFolder: row.source_folder || "",
+    driveFileId: row.drive_file_id || "",
     memo: row.memo || "",
     createdAt: row.created_at,
   }));

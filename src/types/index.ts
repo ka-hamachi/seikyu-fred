@@ -7,6 +7,7 @@ export interface SalesInvoice {
   dueDate: string;
   pdfFileName?: string;
   sourceFolder?: string;
+  driveFileId?: string;
   memo?: string;
   createdAt: string;
 }
@@ -21,6 +22,7 @@ export interface PaymentInvoice {
   dueDate: string;
   pdfFileName?: string;
   sourceFolder?: string;
+  driveFileId?: string;
   memo?: string;
   createdAt: string;
 }

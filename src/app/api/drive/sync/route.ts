@@ -72,11 +72,13 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 3. Get existing auto-imported invoices (ones with drive_file_id)
+  // 3. Get existing auto-imported invoices only from the same source folders
+  const folderNames = linkedFolders.map((f) => f.folder_name);
   const { data: existingInvoices } = await supabase
     .from(tableName)
-    .select("id, drive_file_id")
-    .not("drive_file_id", "is", null);
+    .select("id, drive_file_id, source_folder")
+    .not("drive_file_id", "is", null)
+    .in("source_folder", folderNames);
 
   const existingByDriveId = new Map(
     (existingInvoices || []).map((inv) => [inv.drive_file_id, inv.id])

@@ -14,6 +14,7 @@ export async function GET() {
     client: row.client,
     amount: row.amount,
     status: row.status,
+    checkStatus: row.check_status || "unchecked",
     issueDate: row.issue_date,
     dueDate: row.due_date || "",
     pdfFileName: row.pdf_file_name || "",
@@ -57,6 +58,7 @@ export async function PUT(req: NextRequest) {
   if (updates.issueDate !== undefined) dbUpdates.issue_date = updates.issueDate;
   if (updates.dueDate !== undefined) dbUpdates.due_date = updates.dueDate || null;
   if (updates.memo !== undefined) dbUpdates.memo = updates.memo;
+  if (updates.checkStatus !== undefined) dbUpdates.check_status = updates.checkStatus;
 
   const { data, error } = await supabase
     .from("payment_invoices")

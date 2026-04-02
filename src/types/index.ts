@@ -16,6 +16,7 @@ export interface PaymentInvoice {
   client: string;
   amount: number;
   status: "unpaid" | "paid";
+  checkStatus: "unchecked" | "checked";
   issueDate: string;
   dueDate: string;
   pdfFileName?: string;

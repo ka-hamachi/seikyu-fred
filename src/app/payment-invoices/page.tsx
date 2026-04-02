@@ -86,6 +86,15 @@ export default function PaymentInvoicesPage() {
     fetchInvoices();
   };
 
+  const handleCheckStatusChange = async (id: string, checkStatus: "unchecked" | "checked") => {
+    await fetch("/api/payment-invoices", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, checkStatus }),
+    });
+    fetchInvoices();
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm("この請求書を削除しますか？")) return;
     await fetch(`/api/payment-invoices?id=${id}`, { method: "DELETE" });
@@ -99,6 +108,7 @@ export default function PaymentInvoicesPage() {
       if (sortKey === "client") cmp = a.client.localeCompare(b.client, "ja");
       else if (sortKey === "amount") cmp = a.amount - b.amount;
       else if (sortKey === "sourceFolder") cmp = (a.sourceFolder || "").localeCompare(b.sourceFolder || "", "ja");
+      else if (sortKey === "checkStatus") cmp = a.checkStatus.localeCompare(b.checkStatus);
       else if (sortKey === "status") cmp = a.status.localeCompare(b.status);
       return sortDir === "desc" ? -cmp : cmp;
     });
@@ -164,6 +174,7 @@ export default function PaymentInvoicesPage() {
                 <SortableHeader label="請求者" sortKey="client" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
                 <SortableHeader label="金額" sortKey="amount" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} align="right" />
                 <SortableHeader label="格納元ドライブ" sortKey="sourceFolder" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+                <SortableHeader label="チェック" sortKey="checkStatus" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
                 <SortableHeader label="ステータス" sortKey="status" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
                 <th className="text-right text-xs font-medium text-gray-400 px-6 py-4"></th>
               </tr>
@@ -178,6 +189,20 @@ export default function PaymentInvoicesPage() {
                   </td>
                   <td className="px-6 py-4 text-right text-sm font-semibold text-gray-800">{formatCurrency(inv.amount)}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">{inv.sourceFolder || "-"}</td>
+                  <td className="px-6 py-4">
+                    <select
+                      value={inv.checkStatus}
+                      onChange={(e) => handleCheckStatusChange(inv.id, e.target.value as "unchecked" | "checked")}
+                      className={`text-xs font-medium px-3 py-1.5 rounded-full border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-1 ${
+                        inv.checkStatus === "checked"
+                          ? "bg-blue-100 text-blue-700 focus:ring-blue-300"
+                          : "bg-red-100 text-red-700 focus:ring-red-300"
+                      }`}
+                    >
+                      <option value="unchecked">未確認</option>
+                      <option value="checked">確認済</option>
+                    </select>
+                  </td>
                   <td className="px-6 py-4">
                     <StatusBadge status={inv.status} onChange={(status) => handleStatusChange(inv.id, status)} />
                   </td>

@@ -72,7 +72,6 @@ export default function LinkedFolders({ type, month, accessToken, onSync }: Link
       if (!silent) setSyncMessage(`通信エラー: ${String(err)}`);
     }
     if (!silent) setSyncing(false);
-    if (!silent) setTimeout(() => setSyncMessage(null), 5000);
     syncLockRef.current = false;
   }, [accessToken, folders.length, type, month, onSync]);
 

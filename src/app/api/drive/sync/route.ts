@@ -84,16 +84,33 @@ export async function POST(req: NextRequest) {
     (existingInvoices || []).map((inv) => [inv.drive_file_id, inv.id])
   );
 
-  // 4. Add new files (in Drive but not in DB)
-  let addedCount = 0;
+  // 4. Determine new and removed files
+  const newDriveFiles: [string, { id: string; name: string; sourceFolder: string }][] = [];
   for (const [driveFileId, file] of driveFiles) {
-    if (existingByDriveId.has(driveFileId)) continue;
+    if (!existingByDriveId.has(driveFileId)) {
+      newDriveFiles.push([driveFileId, file]);
+    }
+  }
 
+  const removedIds: string[] = [];
+  for (const [driveFileId, invoiceId] of existingByDriveId) {
+    if (!driveFiles.has(driveFileId)) {
+      removedIds.push(invoiceId);
+    }
+  }
+
+  // Early return if nothing to do
+  if (newDriveFiles.length === 0 && removedIds.length === 0) {
+    return NextResponse.json({ added: 0, removed: 0 });
+  }
+
+  // 5. Add new files (download PDF + Gemini parse)
+  let addedCount = 0;
+  for (const [driveFileId, file] of newDriveFiles) {
     let client = "";
     let amount = 0;
 
     try {
-      // PDFをダウンロードしてGeminiで解析
       const dlRes = await drive.files.get(
         { fileId: driveFileId, alt: "media", supportsAllDrives: true },
         { responseType: "arraybuffer" }
@@ -108,7 +125,6 @@ export async function POST(req: NextRequest) {
       console.error(`[sync] PDF parse error for ${file.name}:`, err);
     }
 
-    // Geminiで取れなかった場合はファイル名から取得
     if (!client) {
       client = extractClientFromFileName(file.name);
     }
@@ -125,7 +141,6 @@ export async function POST(req: NextRequest) {
     });
 
     if (insertError) {
-      // Ignore duplicate key errors (concurrent sync)
       if (!insertError.message.includes("duplicate") && !insertError.message.includes("unique")) {
         errors.push(`Insert ${file.name}: ${insertError.message}`);
       }
@@ -134,12 +149,14 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 5. Remove invoices whose PDF was deleted from Drive (in DB but not in Drive)
+  // 6. Remove invoices whose PDF was deleted from Drive
   let removedCount = 0;
-  for (const [driveFileId, invoiceId] of existingByDriveId) {
-    if (!driveFiles.has(driveFileId)) {
-      await supabase.from(tableName).delete().eq("id", invoiceId);
-      removedCount++;
+  if (removedIds.length > 0) {
+    const { error: delError } = await supabase.from(tableName).delete().in("id", removedIds);
+    if (delError) {
+      errors.push(`Bulk delete: ${delError.message}`);
+    } else {
+      removedCount = removedIds.length;
     }
   }
 

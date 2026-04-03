@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   const body = await req.json();
-  const { id, ...updates } = body;
+  const { id, ids, ...updates } = body;
 
   const dbUpdates: Record<string, unknown> = {};
   if (updates.client !== undefined) dbUpdates.client = updates.client;
@@ -60,6 +60,15 @@ export async function PUT(req: NextRequest) {
   if (updates.dueDate !== undefined) dbUpdates.due_date = updates.dueDate || null;
   if (updates.memo !== undefined) dbUpdates.memo = updates.memo;
   if (updates.checkStatus !== undefined) dbUpdates.check_status = updates.checkStatus;
+
+  if (ids && Array.isArray(ids)) {
+    const { error } = await supabase
+      .from("payment_invoices")
+      .update(dbUpdates)
+      .in("id", ids);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true, updated: ids.length });
+  }
 
   const { data, error } = await supabase
     .from("payment_invoices")
@@ -75,7 +84,16 @@ export async function PUT(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
-  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  const ids = searchParams.get("ids");
+
+  if (ids) {
+    const idList = ids.split(",").filter(Boolean);
+    const { error } = await supabase.from("payment_invoices").delete().in("id", idList);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true, deleted: idList.length });
+  }
+
+  if (!id) return NextResponse.json({ error: "id or ids required" }, { status: 400 });
 
   const { error } = await supabase.from("payment_invoices").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

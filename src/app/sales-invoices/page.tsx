@@ -36,6 +36,8 @@ export default function SalesInvoicesPage() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [sortKey, setSortKey] = useState("");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkActing, setBulkActing] = useState(false);
   const monthOptions = generateMonthOptions();
 
   const handleSort = (key: string) => {
@@ -92,6 +94,46 @@ export default function SalesInvoicesPage() {
     fetchInvoices();
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`${selectedIds.size}件の請求書を削除しますか？`)) return;
+    setBulkActing(true);
+    await fetch(`/api/sales-invoices?ids=${Array.from(selectedIds).join(",")}`, { method: "DELETE" });
+    setSelectedIds(new Set());
+    setBulkActing(false);
+    fetchInvoices();
+  };
+
+  const handleBulkStatusChange = async (status: "unpaid" | "paid") => {
+    if (selectedIds.size === 0) return;
+    setBulkActing(true);
+    await fetch("/api/sales-invoices", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: Array.from(selectedIds), status }),
+    });
+    setSelectedIds(new Set());
+    setBulkActing(false);
+    fetchInvoices();
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredInvoices.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredInvoices.map((inv) => inv.id)));
+    }
+  };
+
   // Filter and sort
   const filteredInvoices = invoices.filter((inv) => inv.issueDate.startsWith(selectedMonth));
   if (sortKey) {
@@ -117,6 +159,31 @@ export default function SalesInvoicesPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {selectedIds.size > 0 && (
+            <>
+              <button
+                onClick={() => handleBulkStatusChange("paid")}
+                disabled={bulkActing}
+                className="px-4 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-medium hover:bg-emerald-600 transition-colors shadow-sm disabled:opacity-50"
+              >
+                入金済にする
+              </button>
+              <button
+                onClick={() => handleBulkStatusChange("unpaid")}
+                disabled={bulkActing}
+                className="px-4 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-medium hover:bg-amber-600 transition-colors shadow-sm disabled:opacity-50"
+              >
+                未入金にする
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={bulkActing}
+                className="px-4 py-2.5 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600 transition-colors shadow-sm disabled:opacity-50"
+              >
+                {selectedIds.size}件を削除
+              </button>
+            </>
+          )}
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
@@ -162,6 +229,14 @@ export default function SalesInvoicesPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100">
+                <th className="px-6 py-4 w-10">
+                  <input
+                    type="checkbox"
+                    checked={filteredInvoices.length > 0 && selectedIds.size === filteredInvoices.length}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  />
+                </th>
                 <SortableHeader label="請求先" sortKey="client" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
                 <SortableHeader label="金額" sortKey="amount" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} align="right" />
                 <SortableHeader label="格納元ドライブ" sortKey="sourceFolder" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
@@ -171,7 +246,15 @@ export default function SalesInvoicesPage() {
             </thead>
             <tbody>
               {filteredInvoices.map((inv) => (
-                <tr key={inv.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                <tr key={inv.id} className={`border-b border-gray-50 hover:bg-gray-50/50 transition-colors ${selectedIds.has(inv.id) ? "bg-blue-50/50" : ""}`}>
+                  <td className="px-6 py-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(inv.id)}
+                      onChange={() => toggleSelect(inv.id)}
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                  </td>
                   <td className="px-6 py-4">
                     {inv.driveFileId ? (
                       <a href={`https://drive.google.com/file/d/${inv.driveFileId}/view`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline">{inv.client}</a>

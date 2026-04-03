@@ -35,6 +35,8 @@ export default function CreditPaymentsPage() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [showAllStores, setShowAllStores] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const monthOptions = generateMonthOptions();
 
@@ -76,6 +78,33 @@ export default function CreditPaymentsPage() {
     if (!confirm("この支払いを削除しますか？")) return;
     await fetch(`/api/credit-payments?id=${id}`, { method: "DELETE" });
     fetchPayments();
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`${selectedIds.size}件のデータを削除しますか？`)) return;
+    setBulkDeleting(true);
+    await fetch(`/api/credit-payments?ids=${Array.from(selectedIds).join(",")}`, { method: "DELETE" });
+    setSelectedIds(new Set());
+    setBulkDeleting(false);
+    fetchPayments();
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === sortedPayments.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(sortedPayments.map((p) => p.id)));
+    }
   };
 
   const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -194,6 +223,15 @@ export default function CreditPaymentsPage() {
             />
             {csvUploading ? "インポート中..." : "CSV取り込み (UPSIDER)"}
           </label>
+          {selectedIds.size > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="px-4 py-2.5 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600 transition-colors shadow-sm disabled:opacity-50"
+            >
+              {bulkDeleting ? "削除中..." : `${selectedIds.size}件を削除`}
+            </button>
+          )}
           <button
             onClick={() => setModalOpen(true)}
             className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
@@ -263,6 +301,14 @@ export default function CreditPaymentsPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100">
+                <th className="px-6 py-4 w-10">
+                  <input
+                    type="checkbox"
+                    checked={sortedPayments.length > 0 && selectedIds.size === sortedPayments.length}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  />
+                </th>
                 <th className="text-left text-xs font-medium text-gray-400 px-6 py-4 cursor-pointer select-none" onClick={() => handleSort("transactionDate")}>
                   取引日<SortIcon column="transactionDate" />
                 </th>
@@ -283,7 +329,15 @@ export default function CreditPaymentsPage() {
             </thead>
             <tbody>
               {sortedPayments.map((p) => (
-                <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                <tr key={p.id} className={`border-b border-gray-50 hover:bg-gray-50/50 transition-colors ${selectedIds.has(p.id) ? "bg-blue-50/50" : ""}`}>
+                  <td className="px-6 py-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(p.id)}
+                      onChange={() => toggleSelect(p.id)}
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                  </td>
                   <td className="px-6 py-4 text-sm text-gray-500">{p.transactionDate}</td>
                   <td className="px-6 py-4">
                     <div className="text-sm font-medium text-gray-800">{p.store}</div>

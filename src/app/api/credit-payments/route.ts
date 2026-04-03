@@ -66,7 +66,16 @@ export async function PUT(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
-  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  const ids = searchParams.get("ids");
+
+  if (ids) {
+    const idList = ids.split(",").filter(Boolean);
+    const { error } = await supabase.from("credit_payments").delete().in("id", idList);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true, deleted: idList.length });
+  }
+
+  if (!id) return NextResponse.json({ error: "id or ids required" }, { status: 400 });
 
   const { error } = await supabase.from("credit_payments").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

@@ -172,10 +172,10 @@ export default function PaymentInvoicesPage() {
   const unpaidCount = filteredInvoices.filter((inv) => inv.status === "unpaid").length;
 
   return (
-    <div className="p-8 max-w-6xl">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 md:p-8 max-w-6xl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">支払い請求書</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-800">支払い請求書</h1>
           <p className="text-sm text-gray-400 mt-1">
             合計 {formatCurrency(totalAmount)} / 未支払い {unpaidCount}件
           </p>
@@ -261,8 +261,8 @@ export default function PaymentInvoicesPage() {
           <p className="text-gray-300 text-xs mt-1">「+ 新規作成」またはフォルダ連携で追加</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <table className="w-full">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+          <table className="w-full min-w-[720px]">
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="px-6 py-4 w-10">

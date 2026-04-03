@@ -192,15 +192,15 @@ export default function CreditPaymentsPage() {
   };
 
   return (
-    <div className="p-8 max-w-6xl">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 md:p-8 max-w-6xl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-6 md:mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">クレジット支払い</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-800">クレジット支払い</h1>
           <p className="text-sm text-gray-400 mt-1">
             出金合計 {formatCurrency(totalWithdrawal)} / 入金合計 {formatCurrency(totalDeposit)} / {filteredPayments.length}件
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2 md:gap-3 flex-wrap">
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
@@ -297,8 +297,8 @@ export default function CreditPaymentsPage() {
           <p className="text-gray-300 text-xs mt-1">「+ 新規作成」またはCSV取り込みで追加</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <table className="w-full">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="px-6 py-4 w-10">

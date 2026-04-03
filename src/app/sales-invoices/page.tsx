@@ -150,35 +150,35 @@ export default function SalesInvoicesPage() {
   const unpaidCount = filteredInvoices.filter((inv) => inv.status === "unpaid").length;
 
   return (
-    <div className="p-8 max-w-6xl">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 md:p-8 max-w-6xl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">売上請求書</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-800">売上請求書</h1>
           <p className="text-sm text-gray-400 mt-1">
             合計 {formatCurrency(totalAmount)} / 未入金 {unpaidCount}件
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3 flex-wrap">
           {selectedIds.size > 0 && (
             <>
               <button
                 onClick={() => handleBulkStatusChange("paid")}
                 disabled={bulkActing}
-                className="px-4 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-medium hover:bg-emerald-600 transition-colors shadow-sm disabled:opacity-50"
+                className="px-3 md:px-4 py-2 md:py-2.5 bg-emerald-500 text-white rounded-xl text-xs md:text-sm font-medium hover:bg-emerald-600 transition-colors shadow-sm disabled:opacity-50"
               >
                 入金済にする
               </button>
               <button
                 onClick={() => handleBulkStatusChange("unpaid")}
                 disabled={bulkActing}
-                className="px-4 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-medium hover:bg-amber-600 transition-colors shadow-sm disabled:opacity-50"
+                className="px-3 md:px-4 py-2 md:py-2.5 bg-amber-500 text-white rounded-xl text-xs md:text-sm font-medium hover:bg-amber-600 transition-colors shadow-sm disabled:opacity-50"
               >
                 未入金にする
               </button>
               <button
                 onClick={handleBulkDelete}
                 disabled={bulkActing}
-                className="px-4 py-2.5 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600 transition-colors shadow-sm disabled:opacity-50"
+                className="px-3 md:px-4 py-2 md:py-2.5 bg-red-500 text-white rounded-xl text-xs md:text-sm font-medium hover:bg-red-600 transition-colors shadow-sm disabled:opacity-50"
               >
                 {selectedIds.size}件を削除
               </button>
@@ -225,8 +225,8 @@ export default function SalesInvoicesPage() {
           <p className="text-gray-300 text-xs mt-1">「+ 新規作成」またはフォルダ連携で追加</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <table className="w-full">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="px-6 py-4 w-10">

@@ -207,9 +207,9 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="p-8 max-w-6xl">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-gray-800">ダッシュボード</h1>
+    <div className="p-4 md:p-8 max-w-6xl">
+      <div className="flex items-center justify-between mb-6 md:mb-8">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-800">ダッシュボード</h1>
         <select
           value={selectedMonth}
           onChange={handleMonthChange}
@@ -235,11 +235,11 @@ export default function Dashboard() {
       ) : summary ? (
         <>
           {/* Gross Profit Card */}
-          <div className="bg-white rounded-2xl p-8 mb-6 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-2xl p-5 md:p-8 mb-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-400 mb-2">{selectedLabel}の粗利</p>
-                <p className={`text-4xl font-bold tracking-tight ${summary.grossProfit >= 0 ? "text-gray-800" : "text-red-500"}`}>
+                <p className={`text-2xl md:text-4xl font-bold tracking-tight ${summary.grossProfit >= 0 ? "text-gray-800" : "text-red-500"}`}>
                   {formatCurrency(summary.grossProfit)}
                 </p>
               </div>

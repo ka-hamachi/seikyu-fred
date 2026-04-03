@@ -34,57 +34,63 @@ export async function POST(req: NextRequest) {
   auth.setCredentials({ access_token: accessToken });
   const drive = google.drive({ version: "v3", auth });
 
-  // 2. Collect all PDFs recursively from Drive folders (including subfolders)
+  // 2. Collect all PDFs recursively (parallelized) + fetch existing DB records in parallel
   const driveFiles = new Map<string, { id: string; name: string; sourceFolder: string }>();
   const errors: string[] = [];
 
   async function collectPdfs(folderId: string, folderName: string) {
-    // Get PDFs in this folder
-    const pdfRes = await drive.files.list({
-      q: `'${folderId}' in parents and mimeType = 'application/pdf' and trashed = false`,
-      fields: "files(id, name)",
-      pageSize: 1000,
-      includeItemsFromAllDrives: true,
-      supportsAllDrives: true,
-    });
+    // Fetch PDFs and subfolders in parallel
+    const [pdfRes, folderRes] = await Promise.all([
+      drive.files.list({
+        q: `'${folderId}' in parents and mimeType = 'application/pdf' and trashed = false`,
+        fields: "files(id, name)",
+        pageSize: 1000,
+        includeItemsFromAllDrives: true,
+        supportsAllDrives: true,
+      }),
+      drive.files.list({
+        q: `'${folderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+        fields: "files(id, name)",
+        pageSize: 100,
+        includeItemsFromAllDrives: true,
+        supportsAllDrives: true,
+      }),
+    ]);
+
     for (const file of pdfRes.data.files || []) {
       driveFiles.set(file.id!, { id: file.id!, name: file.name!, sourceFolder: folderName });
     }
 
-    // Get subfolders and recurse
-    const folderRes = await drive.files.list({
-      q: `'${folderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
-      fields: "files(id, name)",
-      pageSize: 100,
-      includeItemsFromAllDrives: true,
-      supportsAllDrives: true,
-    });
-    for (const sub of folderRes.data.files || []) {
-      await collectPdfs(sub.id!, sub.name!);
-    }
+    // Recurse subfolders in parallel
+    await Promise.all(
+      (folderRes.data.files || []).map((sub) => collectPdfs(sub.id!, sub.name!))
+    );
   }
 
-  for (const folder of linkedFolders) {
-    try {
-      await collectPdfs(folder.folder_id, folder.folder_name);
-    } catch (err) {
-      errors.push(`Folder ${folder.folder_name}: ${String(err)}`);
-    }
-  }
-
-  // 3. Get existing auto-imported invoices only from the same source folders
+  // Run all folder scans + DB query in parallel
   const folderNames = linkedFolders.map((f) => f.folder_name);
-  const { data: existingInvoices } = await supabase
-    .from(tableName)
-    .select("id, drive_file_id, source_folder")
-    .not("drive_file_id", "is", null)
-    .in("source_folder", folderNames);
+  const [, existingResult] = await Promise.all([
+    Promise.all(
+      linkedFolders.map(async (folder) => {
+        try {
+          await collectPdfs(folder.folder_id, folder.folder_name);
+        } catch (err) {
+          errors.push(`Folder ${folder.folder_name}: ${String(err)}`);
+        }
+      })
+    ),
+    supabase
+      .from(tableName)
+      .select("id, drive_file_id, source_folder")
+      .not("drive_file_id", "is", null)
+      .in("source_folder", folderNames),
+  ]);
 
   const existingByDriveId = new Map(
-    (existingInvoices || []).map((inv) => [inv.drive_file_id, inv.id])
+    (existingResult.data || []).map((inv) => [inv.drive_file_id, inv.id])
   );
 
-  // 4. Determine new and removed files
+  // 3. Determine new and removed files
   const newDriveFiles: [string, { id: string; name: string; sourceFolder: string }][] = [];
   for (const [driveFileId, file] of driveFiles) {
     if (!existingByDriveId.has(driveFileId)) {
@@ -104,52 +110,53 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ added: 0, removed: 0 });
   }
 
-  // 5. Add new files (download PDF + Gemini parse)
-  let addedCount = 0;
-  for (const [driveFileId, file] of newDriveFiles) {
-    let client = "";
-    let amount = 0;
+  // 4. Add new files (download PDF + Gemini parse) in parallel
+  const addResults = await Promise.all(
+    newDriveFiles.map(async ([driveFileId, file]) => {
+      let client = "";
+      let amount = 0;
 
-    try {
-      const dlRes = await drive.files.get(
-        { fileId: driveFileId, alt: "media", supportsAllDrives: true },
-        { responseType: "arraybuffer" }
-      );
-      const buffer = new Uint8Array(dlRes.data as ArrayBuffer);
-      console.log(`[sync] Parsing PDF: ${file.name} (${buffer.length} bytes)`);
-      const geminiResult = await parsePdfWithGemini(buffer, type === "sales" ? "sales" : "payment");
-      console.log(`[sync] Gemini result for ${file.name}:`, geminiResult);
-      client = geminiResult.client;
-      amount = geminiResult.amount;
-    } catch (err) {
-      console.error(`[sync] PDF parse error for ${file.name}:`, err);
-    }
-
-    if (!client) {
-      client = extractClientFromFileName(file.name);
-    }
-
-    const { error: insertError } = await supabase.from(tableName).insert({
-      client: client || file.name.replace(".pdf", ""),
-      amount,
-      status: "unpaid",
-      issue_date: month + "-01",
-      pdf_file_name: file.name,
-      drive_file_id: driveFileId,
-      source_folder: file.sourceFolder,
-      memo: amount === 0 ? "PDF解析 - 金額を確認してください" : "Google Driveから自動取り込み",
-    });
-
-    if (insertError) {
-      if (!insertError.message.includes("duplicate") && !insertError.message.includes("unique")) {
-        errors.push(`Insert ${file.name}: ${insertError.message}`);
+      try {
+        const dlRes = await drive.files.get(
+          { fileId: driveFileId, alt: "media", supportsAllDrives: true },
+          { responseType: "arraybuffer" }
+        );
+        const buffer = new Uint8Array(dlRes.data as ArrayBuffer);
+        const geminiResult = await parsePdfWithGemini(buffer, type === "sales" ? "sales" : "payment");
+        client = geminiResult.client;
+        amount = geminiResult.amount;
+      } catch (err) {
+        console.error(`[sync] PDF parse error for ${file.name}:`, err);
       }
-    } else {
-      addedCount++;
-    }
-  }
 
-  // 6. Remove invoices whose PDF was deleted from Drive
+      if (!client) {
+        client = extractClientFromFileName(file.name);
+      }
+
+      const { error: insertError } = await supabase.from(tableName).insert({
+        client: client || file.name.replace(".pdf", ""),
+        amount,
+        status: "unpaid",
+        issue_date: month + "-01",
+        pdf_file_name: file.name,
+        drive_file_id: driveFileId,
+        source_folder: file.sourceFolder,
+        memo: amount === 0 ? "PDF解析 - 金額を確認してください" : "Google Driveから自動取り込み",
+      });
+
+      if (insertError) {
+        if (!insertError.message.includes("duplicate") && !insertError.message.includes("unique")) {
+          errors.push(`Insert ${file.name}: ${insertError.message}`);
+        }
+        return false;
+      }
+      return true;
+    })
+  );
+
+  const addedCount = addResults.filter(Boolean).length;
+
+  // 5. Remove invoices whose PDF was deleted from Drive
   let removedCount = 0;
   if (removedIds.length > 0) {
     const { error: delError } = await supabase.from(tableName).delete().in("id", removedIds);

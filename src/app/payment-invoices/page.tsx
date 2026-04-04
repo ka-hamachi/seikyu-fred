@@ -284,7 +284,7 @@ export default function PaymentInvoicesPage() {
                 </th>
                 <SortableHeader label="請求者" sortKey="client" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
                 <SortableHeader label="金額" sortKey="amount" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} align="right" />
-                <SortableHeader label="格納フォルダ" sortKey="sourceFolder" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+                <SortableHeader label="フォルダ" sortKey="sourceFolder" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
                 <SortableHeader label="チェック" sortKey="checkStatus" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
                 <SortableHeader label="ステータス" sortKey="status" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
                 <th className="text-left text-xs font-medium text-gray-400 px-6 py-4">コメント</th>

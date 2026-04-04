@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
         pdf_file_name: file.name,
         drive_file_id: driveFileId,
         source_folder: file.sourceFolder,
-        memo: amount === 0 ? "PDF解析 - 金額を確認してください" : "Google Driveから自動取り込み",
+        memo: null,
       });
 
       if (insertError) {

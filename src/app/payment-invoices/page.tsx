@@ -79,6 +79,15 @@ export default function PaymentInvoicesPage() {
     fetchInvoices();
   };
 
+  const handleCommentChange = async (id: string, memo: string) => {
+    await fetch("/api/payment-invoices", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, memo }),
+    });
+    setInvoices((prev) => prev.map((inv) => inv.id === id ? { ...inv, memo } : inv));
+  };
+
   const handleStatusChange = async (id: string, status: "unpaid" | "paid") => {
     await fetch("/api/payment-invoices", {
       method: "PUT",
@@ -262,7 +271,7 @@ export default function PaymentInvoicesPage() {
         </div>
       ) : (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
-          <table className="w-full min-w-[720px]">
+          <table className="w-full min-w-[880px]">
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="px-6 py-4 w-10">
@@ -275,9 +284,10 @@ export default function PaymentInvoicesPage() {
                 </th>
                 <SortableHeader label="請求者" sortKey="client" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
                 <SortableHeader label="金額" sortKey="amount" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} align="right" />
-                <SortableHeader label="格納元ドライブ" sortKey="sourceFolder" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+                <SortableHeader label="格納フォルダ" sortKey="sourceFolder" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
                 <SortableHeader label="チェック" sortKey="checkStatus" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
                 <SortableHeader label="ステータス" sortKey="status" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+                <th className="text-left text-xs font-medium text-gray-400 px-6 py-4">コメント</th>
                 <th className="text-right text-xs font-medium text-gray-400 px-6 py-4"></th>
               </tr>
             </thead>
@@ -299,7 +309,6 @@ export default function PaymentInvoicesPage() {
                       <div className="text-sm font-medium text-gray-800">{inv.client}</div>
                     )}
                     {inv.pdfFileName && <div className="text-xs text-gray-400 mt-0.5">{inv.pdfFileName}</div>}
-                    {inv.memo && <div className="text-xs text-gray-400 mt-0.5">{inv.memo}</div>}
                   </td>
                   <td className="px-6 py-4 text-right text-sm font-semibold text-gray-800">{formatCurrency(inv.amount)}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">{inv.sourceFolder || "-"}</td>
@@ -319,6 +328,18 @@ export default function PaymentInvoicesPage() {
                   </td>
                   <td className="px-6 py-4">
                     <StatusBadge status={inv.status} onChange={(status) => handleStatusChange(inv.id, status)} />
+                  </td>
+                  <td className="px-6 py-4">
+                    <input
+                      type="text"
+                      defaultValue={inv.memo || ""}
+                      onBlur={(e) => {
+                        if (e.target.value !== (inv.memo || "")) handleCommentChange(inv.id, e.target.value);
+                      }}
+                      onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                      placeholder="..."
+                      className="w-full text-xs text-gray-600 bg-transparent border-b border-transparent hover:border-gray-200 focus:border-blue-400 focus:outline-none py-1 transition-colors"
+                    />
                   </td>
                   <td className="px-6 py-4 text-right">
                     <button onClick={() => handleDelete(inv.id)} className="text-gray-300 hover:text-red-400 transition-colors">

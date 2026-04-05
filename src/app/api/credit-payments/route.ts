@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
-export async function GET() {
-  const { data, error } = await supabase
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const month = searchParams.get("month");
+
+  let query = supabase
     .from("credit_payments")
     .select("*")
     .order("transaction_date", { ascending: false });
+
+  if (month) {
+    query = query.gte("transaction_date", `${month}-01`).lt("transaction_date", `${month}-32`);
+  }
+
+  const { data, error } = await query;
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

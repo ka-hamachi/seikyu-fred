@@ -41,22 +41,20 @@ export default function CreditPaymentsPage() {
   const monthOptions = generateMonthOptions();
 
   const fetchPayments = useCallback(() => {
-    fetch("/api/credit-payments")
+    setLoading(true);
+    fetch(`/api/credit-payments?month=${selectedMonth}`)
       .then((res) => res.json())
       .then((data) => {
         setPayments(data);
         setLoading(false);
       });
-  }, []);
+  }, [selectedMonth]);
 
   useEffect(() => {
     fetchPayments();
   }, [fetchPayments]);
 
-  // 月でフィルタリング（クライアント側）
-  const filteredPayments = useMemo(() => {
-    return payments.filter((p) => p.transactionDate.startsWith(selectedMonth));
-  }, [payments, selectedMonth]);
+  const filteredPayments = payments;
 
   const handleAdd = async (data: {
     store: string;

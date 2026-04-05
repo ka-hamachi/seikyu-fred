@@ -10,7 +10,8 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from("credit_payments")
     .select("*")
-    .order("transaction_date", { ascending: false });
+    .order("transaction_date", { ascending: false })
+    .limit(10000);
 
   if (month) {
     const [y, m] = month.split("-").map(Number);

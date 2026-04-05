@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import type { DashboardSummary } from "@/types";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const month = searchParams.get("month");
@@ -19,17 +21,20 @@ export async function GET(req: NextRequest) {
       .from("sales_invoices")
       .select("amount, status")
       .gte("issue_date", firstDay)
-      .lt("issue_date", lastDay),
+      .lt("issue_date", lastDay)
+      .limit(10000),
     supabase
       .from("payment_invoices")
       .select("amount, status")
       .gte("issue_date", firstDay)
-      .lt("issue_date", lastDay),
+      .lt("issue_date", lastDay)
+      .limit(10000),
     supabase
       .from("credit_payments")
       .select("withdrawal, deposit")
       .gte("transaction_date", firstDay)
-      .lt("transaction_date", lastDay),
+      .lt("transaction_date", lastDay)
+      .limit(10000),
   ]);
 
   const sales = salesRes.data || [];

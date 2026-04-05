@@ -5,7 +5,8 @@ export async function GET() {
   const { data, error } = await supabase
     .from("sales_invoices")
     .select("*")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(10000);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

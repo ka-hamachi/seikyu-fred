@@ -42,7 +42,7 @@ export default function CreditPaymentsPage() {
 
   const fetchPayments = useCallback(() => {
     setLoading(true);
-    fetch(`/api/credit-payments?month=${selectedMonth}`)
+    fetch(`/api/credit-payments?month=${selectedMonth}&_t=${Date.now()}`, { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         setPayments(data);

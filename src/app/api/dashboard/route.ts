@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   // Calculate first and last day of month
   const [year, mon] = targetMonth.split("-").map(Number);
   const firstDay = `${targetMonth}-01`;
-  const lastDay = `${year}-${String(mon + 1).padStart(2, "0")}-01`;
+  const lastDay = mon === 12 ? `${year + 1}-01-01` : `${year}-${String(mon + 1).padStart(2, "0")}-01`;
 
   const [salesRes, paymentsRes, creditsRes] = await Promise.all([
     supabase

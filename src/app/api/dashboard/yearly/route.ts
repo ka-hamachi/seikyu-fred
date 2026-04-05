@@ -13,17 +13,20 @@ export async function GET(req: NextRequest) {
       .from("sales_invoices")
       .select("amount, issue_date")
       .gte("issue_date", firstDay)
-      .lt("issue_date", lastDay),
+      .lt("issue_date", lastDay)
+      .limit(10000),
     supabase
       .from("payment_invoices")
       .select("amount, issue_date")
       .gte("issue_date", firstDay)
-      .lt("issue_date", lastDay),
+      .lt("issue_date", lastDay)
+      .limit(10000),
     supabase
       .from("credit_payments")
       .select("withdrawal, deposit, transaction_date")
       .gte("transaction_date", firstDay)
-      .lt("transaction_date", lastDay),
+      .lt("transaction_date", lastDay)
+      .limit(10000),
   ]);
 
   const sales = salesRes.data || [];

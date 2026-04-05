@@ -89,11 +89,9 @@ export default function CreditPaymentsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ids: Array.from(selectedIds) }),
     });
-    if (res.ok) {
-      setPayments((prev) => prev.filter((p) => !selectedIds.has(p.id)));
-    }
     setSelectedIds(new Set());
     setBulkDeleting(false);
+    fetchPayments();
   };
 
   const toggleSelect = (id: string) => {

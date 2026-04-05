@@ -84,7 +84,11 @@ export default function CreditPaymentsPage() {
     if (selectedIds.size === 0) return;
     if (!confirm(`${selectedIds.size}件のデータを削除しますか？`)) return;
     setBulkDeleting(true);
-    const res = await fetch(`/api/credit-payments?ids=${Array.from(selectedIds).join(",")}`, { method: "DELETE" });
+    const res = await fetch("/api/credit-payments", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: Array.from(selectedIds) }),
+    });
     if (res.ok) {
       setPayments((prev) => prev.filter((p) => !selectedIds.has(p.id)));
     }

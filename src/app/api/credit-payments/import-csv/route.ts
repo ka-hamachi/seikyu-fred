@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "CSV is empty" }, { status: 400 });
   }
 
-  const seenTxIds = new Set<string>();
+  const seenKeys = new Set<string>();
   const rows: {
     transaction_date: string;
     store: string;
@@ -68,15 +68,16 @@ export async function POST(req: NextRequest) {
 
       const txId = cols[2] || null;
 
-      // CSV内の重複を除去
-      if (txId) {
-        if (seenTxIds.has(txId)) continue;
-        seenTxIds.add(txId);
-      }
-
       // 日付フォーマット変換: 2026/01/01 → 2026-01-01
       const rawDate = cols[0] || "";
       const transactionDate = rawDate.includes("/") ? rawDate.replace(/\//g, "-") : rawDate || new Date().toISOString().split("T")[0];
+
+      // CSV内の重複を除去（決済ID + 取引日）
+      if (txId) {
+        const key = `${txId}|${transactionDate}`;
+        if (seenKeys.has(key)) continue;
+        seenKeys.add(key);
+      }
 
       rows.push({
         transaction_date: transactionDate,
@@ -93,23 +94,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "有効なデータがありません" }, { status: 400 });
   }
 
-  // 既存の決済IDを取得して重複を除外（.in()のURL長制限を回避するためバッチ分割）
+  // 既存の決済ID+取引日を取得して重複を除外
   const txIds = [...new Set(rows.map((r) => r.transaction_id).filter(Boolean) as string[])];
-  const existingIds = new Set<string>();
+  const existingKeys = new Set<string>();
 
   const IN_BATCH = 100;
   for (let i = 0; i < txIds.length; i += IN_BATCH) {
     const batch = txIds.slice(i, i + IN_BATCH);
     const { data: existing } = await supabase
       .from("credit_payments")
-      .select("transaction_id")
+      .select("transaction_id, transaction_date")
       .in("transaction_id", batch);
     for (const row of existing || []) {
-      if (row.transaction_id) existingIds.add(row.transaction_id);
+      if (row.transaction_id) existingKeys.add(`${row.transaction_id}|${row.transaction_date}`);
     }
   }
 
-  const newRows = rows.filter((r) => !r.transaction_id || !existingIds.has(r.transaction_id));
+  const newRows = rows.filter((r) => {
+    if (!r.transaction_id) return true;
+    return !existingKeys.has(`${r.transaction_id}|${r.transaction_date}`);
+  });
 
   if (newRows.length === 0) {
     return NextResponse.json({ imported: 0, skipped: rows.length, message: "全て重複のためスキップしました" });

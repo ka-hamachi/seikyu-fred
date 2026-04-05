@@ -85,7 +85,6 @@ export async function POST(req: NextRequest) {
       .from(tableName)
       .select("id, drive_file_id, source_folder")
       .not("drive_file_id", "is", null)
-      .in("source_folder", folderNames)
       .gte("issue_date", `${month}-01`)
       .lt("issue_date", nextMonth),
   ]);

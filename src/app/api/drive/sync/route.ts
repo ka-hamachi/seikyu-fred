@@ -69,6 +69,8 @@ export async function POST(req: NextRequest) {
 
   // Run all folder scans + DB query in parallel
   const folderNames = linkedFolders.map((f) => f.folder_name);
+  const [y, m] = month.split("-").map(Number);
+  const nextMonth = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`;
   const [, existingResult] = await Promise.all([
     Promise.all(
       linkedFolders.map(async (folder) => {
@@ -85,7 +87,7 @@ export async function POST(req: NextRequest) {
       .not("drive_file_id", "is", null)
       .in("source_folder", folderNames)
       .gte("issue_date", `${month}-01`)
-      .lt("issue_date", `${month}-32`),
+      .lt("issue_date", nextMonth),
   ]);
 
   const existingByDriveId = new Map(

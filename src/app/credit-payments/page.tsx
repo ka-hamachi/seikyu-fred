@@ -74,18 +74,22 @@ export default function CreditPaymentsPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("この支払いを削除しますか？")) return;
-    await fetch(`/api/credit-payments?id=${id}`, { method: "DELETE" });
-    fetchPayments();
+    const res = await fetch(`/api/credit-payments?id=${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setPayments((prev) => prev.filter((p) => p.id !== id));
+    }
   };
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
     if (!confirm(`${selectedIds.size}件のデータを削除しますか？`)) return;
     setBulkDeleting(true);
-    await fetch(`/api/credit-payments?ids=${Array.from(selectedIds).join(",")}`, { method: "DELETE" });
+    const res = await fetch(`/api/credit-payments?ids=${Array.from(selectedIds).join(",")}`, { method: "DELETE" });
+    if (res.ok) {
+      setPayments((prev) => prev.filter((p) => !selectedIds.has(p.id)));
+    }
     setSelectedIds(new Set());
     setBulkDeleting(false);
-    fetchPayments();
   };
 
   const toggleSelect = (id: string) => {

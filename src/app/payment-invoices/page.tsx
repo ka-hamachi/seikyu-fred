@@ -65,7 +65,7 @@ export default function PaymentInvoicesPage() {
   const handleAdd = async (data: {
     client: string;
     amount: number;
-    status: "unpaid" | "paid";
+    status: "unpaid" | "paid" | "not_required";
     issueDate: string;
     dueDate: string;
     memo: string;
@@ -88,7 +88,7 @@ export default function PaymentInvoicesPage() {
     setInvoices((prev) => prev.map((inv) => inv.id === id ? { ...inv, memo } : inv));
   };
 
-  const handleStatusChange = async (id: string, status: "unpaid" | "paid") => {
+  const handleStatusChange = async (id: string, status: "unpaid" | "paid" | "not_required") => {
     await fetch("/api/payment-invoices", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -122,7 +122,7 @@ export default function PaymentInvoicesPage() {
     fetchInvoices();
   };
 
-  const handleBulkStatusChange = async (status: "unpaid" | "paid") => {
+  const handleBulkStatusChange = async (status: "unpaid" | "paid" | "not_required") => {
     if (selectedIds.size === 0) return;
     setBulkActing(true);
     await fetch("/api/payment-invoices", {
@@ -219,6 +219,13 @@ export default function PaymentInvoicesPage() {
                 className="px-4 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-medium hover:bg-amber-600 transition-colors shadow-sm disabled:opacity-50"
               >
                 未支払にする
+              </button>
+              <button
+                onClick={() => handleBulkStatusChange("not_required")}
+                disabled={bulkActing}
+                className="px-4 py-2.5 bg-gray-400 text-white rounded-xl text-sm font-medium hover:bg-gray-500 transition-colors shadow-sm disabled:opacity-50"
+              >
+                入金不要にする
               </button>
               <button
                 onClick={handleBulkDelete}
@@ -327,7 +334,7 @@ export default function PaymentInvoicesPage() {
                     </select>
                   </td>
                   <td className="px-6 py-4">
-                    <StatusBadge status={inv.status} onChange={(status) => handleStatusChange(inv.id, status)} />
+                    <StatusBadge status={inv.status} onChange={(s) => handleStatusChange(inv.id, s as "unpaid" | "paid" | "not_required")} showNotRequired />
                   </td>
                   <td className="px-6 py-4">
                     <input
@@ -355,7 +362,7 @@ export default function PaymentInvoicesPage() {
         </div>
       )}
 
-      <InvoiceModal isOpen={modalOpen} onClose={() => setModalOpen(false)} onSubmit={handleAdd} title="支払い請求書を追加" />
+      <InvoiceModal isOpen={modalOpen} onClose={() => setModalOpen(false)} onSubmit={handleAdd} title="支払い請求書を追加" showNotRequired />
     </div>
   );
 }

@@ -8,26 +8,27 @@ interface InvoiceModalProps {
   onSubmit: (data: {
     client: string;
     amount: number;
-    status: "unpaid" | "paid";
+    status: "unpaid" | "paid" | "not_required";
     issueDate: string;
     dueDate: string;
     memo: string;
   }) => void;
   title: string;
+  showNotRequired?: boolean;
   initial?: {
     client: string;
     amount: number;
-    status: "unpaid" | "paid";
+    status: "unpaid" | "paid" | "not_required";
     issueDate: string;
     dueDate: string;
     memo: string;
   };
 }
 
-export default function InvoiceModal({ isOpen, onClose, onSubmit, title, initial }: InvoiceModalProps) {
+export default function InvoiceModal({ isOpen, onClose, onSubmit, title, showNotRequired = false, initial }: InvoiceModalProps) {
   const [client, setClient] = useState(initial?.client || "");
   const [amount, setAmount] = useState(initial?.amount?.toString() || "");
-  const [status, setStatus] = useState<"unpaid" | "paid">(initial?.status || "unpaid");
+  const [status, setStatus] = useState<"unpaid" | "paid" | "not_required">(initial?.status || "unpaid");
   const [issueDate, setIssueDate] = useState(initial?.issueDate || new Date().toISOString().split("T")[0]);
   const [dueDate, setDueDate] = useState(initial?.dueDate || "");
   const [memo, setMemo] = useState(initial?.memo || "");
@@ -105,11 +106,12 @@ export default function InvoiceModal({ isOpen, onClose, onSubmit, title, initial
             <label className="block text-sm font-medium text-gray-600 mb-1.5">ステータス</label>
             <select
               value={status}
-              onChange={(e) => setStatus(e.target.value as "unpaid" | "paid")}
+              onChange={(e) => setStatus(e.target.value as "unpaid" | "paid" | "not_required")}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all"
             >
               <option value="unpaid">未入金</option>
               <option value="paid">入金済み</option>
+              {showNotRequired && <option value="not_required">入金不要</option>}
             </select>
           </div>
           <div>

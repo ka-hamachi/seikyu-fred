@@ -65,7 +65,7 @@ export default function SalesInvoicesPage() {
   const handleAdd = async (data: {
     client: string;
     amount: number;
-    status: "unpaid" | "paid";
+    status: string;
     issueDate: string;
     dueDate: string;
     memo: string;
@@ -276,7 +276,7 @@ export default function SalesInvoicesPage() {
                   <td className="px-6 py-4 text-right text-sm font-semibold text-gray-800">{formatCurrency(inv.amount)}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">{inv.sourceFolder || "-"}</td>
                   <td className="px-6 py-4">
-                    <StatusBadge status={inv.status} onChange={(status) => handleStatusChange(inv.id, status)} />
+                    <StatusBadge status={inv.status} onChange={(s) => handleStatusChange(inv.id, s as "unpaid" | "paid")} />
                   </td>
                   <td className="px-6 py-4">
                     <input

@@ -137,8 +137,6 @@ export default function CreditPaymentsPage() {
     setCsvUploading(false);
     fetchPayments();
     e.target.value = "";
-
-    setTimeout(() => setImportResult(null), 3000);
   };
 
   const handleSort = (key: SortKey) => {
@@ -248,8 +246,9 @@ export default function CreditPaymentsPage() {
       </div>
 
       {importResult && (
-        <div className="mb-4 px-4 py-3 bg-blue-50 text-blue-700 rounded-xl text-sm">
-          {importResult}
+        <div className={`mb-4 px-4 py-3 rounded-xl text-sm flex items-center justify-between ${importResult.startsWith("エラー") ? "bg-red-50 text-red-700" : "bg-blue-50 text-blue-700"}`}>
+          <span>{importResult}</span>
+          <button onClick={() => setImportResult(null)} className="ml-3 hover:opacity-70">✕</button>
         </div>
       )}
 

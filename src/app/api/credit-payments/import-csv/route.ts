@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "CSV is empty" }, { status: 400 });
   }
 
+  const seenTxIds = new Set<string>();
   const rows: {
     transaction_date: string;
     store: string;
@@ -44,10 +45,22 @@ export async function POST(req: NextRequest) {
       // Skip rows with no amounts
       if (withdrawal === 0 && deposit === 0) continue;
 
+      const txId = cols[2] || null;
+
+      // CSV内の重複を除去
+      if (txId) {
+        if (seenTxIds.has(txId)) continue;
+        seenTxIds.add(txId);
+      }
+
+      // 日付フォーマット変換: 2026/01/01 → 2026-01-01
+      const rawDate = cols[0] || "";
+      const transactionDate = rawDate.includes("/") ? rawDate.replace(/\//g, "-") : rawDate || new Date().toISOString().split("T")[0];
+
       rows.push({
-        transaction_date: cols[0] || new Date().toISOString().split("T")[0],
+        transaction_date: transactionDate,
         store: cols[1] || "",
-        transaction_id: cols[2] || null,
+        transaction_id: txId,
         withdrawal,
         deposit,
         card_name: cols[9] || null,
@@ -78,12 +91,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ imported: 0, skipped: rows.length, message: "全て重複のためスキップしました" });
   }
 
-  const { error } = await supabase.from("credit_payments").insert(newRows);
+  // バッチに分割して挿入（Supabaseの行数制限を回避）
+  const BATCH_SIZE = 500;
+  let imported = 0;
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  for (let i = 0; i < newRows.length; i += BATCH_SIZE) {
+    const batch = newRows.slice(i, i + BATCH_SIZE);
+    const { error } = await supabase.from("credit_payments").insert(batch);
+    if (error) {
+      return NextResponse.json({ error: error.message, imported }, { status: 500 });
+    }
+    imported += batch.length;
   }
 
   const skipped = rows.length - newRows.length;
-  return NextResponse.json({ imported: newRows.length, skipped });
+  return NextResponse.json({ imported, skipped });
 }

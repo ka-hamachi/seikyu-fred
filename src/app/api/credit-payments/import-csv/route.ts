@@ -1,6 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase, fetchAll } from "@/lib/supabase";
 
+/** クォート内のカンマを正しく処理するCSVパーサー */
+function parseCSVLine(line: string): string[] {
+  const cols: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      inQuotes = !inQuotes;
+    } else if (ch === "," && !inQuotes) {
+      cols.push(current.trim());
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  cols.push(current.trim());
+  return cols;
+}
+
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
@@ -37,7 +58,7 @@ export async function POST(req: NextRequest) {
   }[] = [];
 
   for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+    const cols = parseCSVLine(lines[i]);
     if (cols.length >= 6) {
       const withdrawal = Math.abs(Number(cols[4]?.replace(/[,¥￥]/g, "")) || 0);
       const deposit = Math.abs(Number(cols[5]?.replace(/[,¥￥]/g, "")) || 0);

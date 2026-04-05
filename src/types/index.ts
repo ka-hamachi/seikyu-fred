@@ -30,6 +30,7 @@ export interface PaymentInvoice {
 export interface CreditPayment {
   id: string;
   store: string;
+  transactionId: string;
   withdrawal: number;
   deposit: number;
   transactionDate: string;

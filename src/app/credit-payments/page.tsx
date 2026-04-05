@@ -5,7 +5,7 @@ import type { CreditPayment } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 import CreditModal from "@/components/CreditModal";
 
-type SortKey = "transactionDate" | "store" | "withdrawal" | "deposit" | "cardName";
+type SortKey = "transactionDate" | "store" | "transactionId" | "withdrawal" | "deposit" | "cardName";
 type SortDir = "asc" | "desc";
 
 function getCurrentMonth(): string {
@@ -58,6 +58,7 @@ export default function CreditPaymentsPage() {
 
   const handleAdd = async (data: {
     store: string;
+    transactionId: string;
     withdrawal: number;
     deposit: number;
     transactionDate: string;
@@ -127,7 +128,8 @@ export default function CreditPaymentsPage() {
     const result = await res.json();
 
     if (res.ok) {
-      setImportResult(`${result.imported}件をインポートしました`);
+      const skippedMsg = result.skipped ? `（重複${result.skipped}件スキップ）` : "";
+      setImportResult(`${result.imported}件をインポートしました${skippedMsg}`);
     } else {
       setImportResult(`エラー: ${result.error}`);
     }
@@ -319,6 +321,9 @@ export default function CreditPaymentsPage() {
                 <th className="text-left text-xs font-medium text-gray-400 px-6 py-4 cursor-pointer select-none" onClick={() => handleSort("store")}>
                   利用先<SortIcon column="store" />
                 </th>
+                <th className="text-left text-xs font-medium text-gray-400 px-6 py-4 cursor-pointer select-none" onClick={() => handleSort("transactionId")}>
+                  決済ID<SortIcon column="transactionId" />
+                </th>
                 <th className="text-right text-xs font-medium text-gray-400 px-6 py-4 cursor-pointer select-none" onClick={() => handleSort("withdrawal")}>
                   出金金額<SortIcon column="withdrawal" />
                 </th>
@@ -346,6 +351,7 @@ export default function CreditPaymentsPage() {
                   <td className="px-6 py-4">
                     <div className="text-sm font-medium text-gray-800">{p.store}</div>
                   </td>
+                  <td className="px-6 py-4 text-sm text-gray-400 font-mono">{p.transactionId || "-"}</td>
                   <td className="px-6 py-4 text-right text-sm font-semibold text-gray-800">
                     {p.withdrawal > 0 ? formatCurrency(p.withdrawal) : "-"}
                   </td>

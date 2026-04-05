@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
   const payments = (data || []).map((row) => ({
     id: row.id,
     store: row.store || "",
+    transactionId: row.transaction_id || "",
     withdrawal: row.withdrawal || 0,
     deposit: row.deposit || 0,
     transactionDate: row.transaction_date,
@@ -44,6 +45,7 @@ export async function POST(req: NextRequest) {
     .from("credit_payments")
     .insert({
       store: body.store || "",
+      transaction_id: body.transactionId || null,
       withdrawal: Number(body.withdrawal) || 0,
       deposit: Number(body.deposit) || 0,
       transaction_date: body.transactionDate || new Date().toISOString().split("T")[0],
@@ -62,6 +64,7 @@ export async function PUT(req: NextRequest) {
 
   const dbUpdates: Record<string, unknown> = {};
   if (updates.store !== undefined) dbUpdates.store = updates.store;
+  if (updates.transactionId !== undefined) dbUpdates.transaction_id = updates.transactionId;
   if (updates.withdrawal !== undefined) dbUpdates.withdrawal = Number(updates.withdrawal);
   if (updates.deposit !== undefined) dbUpdates.deposit = Number(updates.deposit);
   if (updates.transactionDate !== undefined) dbUpdates.transaction_date = updates.transactionDate;

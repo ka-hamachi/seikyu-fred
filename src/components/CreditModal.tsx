@@ -7,6 +7,7 @@ interface CreditModalProps {
   onClose: () => void;
   onSubmit: (data: {
     store: string;
+    transactionId: string;
     withdrawal: number;
     deposit: number;
     transactionDate: string;
@@ -14,6 +15,7 @@ interface CreditModalProps {
   }) => void;
   initial?: {
     store: string;
+    transactionId: string;
     withdrawal: number;
     deposit: number;
     transactionDate: string;
@@ -23,6 +25,7 @@ interface CreditModalProps {
 
 export default function CreditModal({ isOpen, onClose, onSubmit, initial }: CreditModalProps) {
   const [store, setStore] = useState(initial?.store || "");
+  const [transactionId, setTransactionId] = useState(initial?.transactionId || "");
   const [withdrawal, setWithdrawal] = useState(initial?.withdrawal?.toString() || "");
   const [deposit, setDeposit] = useState(initial?.deposit?.toString() || "0");
   const [transactionDate, setTransactionDate] = useState(initial?.transactionDate || new Date().toISOString().split("T")[0]);
@@ -34,12 +37,14 @@ export default function CreditModal({ isOpen, onClose, onSubmit, initial }: Cred
     e.preventDefault();
     onSubmit({
       store,
+      transactionId,
       withdrawal: Number(withdrawal.replace(/,/g, "")) || 0,
       deposit: Number(deposit.replace(/,/g, "")) || 0,
       transactionDate,
       cardName,
     });
     setStore("");
+    setTransactionId("");
     setWithdrawal("");
     setDeposit("0");
     setTransactionDate(new Date().toISOString().split("T")[0]);
@@ -62,6 +67,16 @@ export default function CreditModal({ isOpen, onClose, onSubmit, initial }: Cred
               required
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all"
               placeholder="Amazon / Google Workspace"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1.5">決済ID</label>
+            <input
+              type="text"
+              value={transactionId}
+              onChange={(e) => setTransactionId(e.target.value)}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all"
+              placeholder="任意"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">

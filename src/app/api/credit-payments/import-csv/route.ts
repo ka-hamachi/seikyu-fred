@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabase, fetchAll } from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
   const rows: {
     transaction_date: string;
     store: string;
+    transaction_id: string | null;
     withdrawal: number;
     deposit: number;
     card_name: string | null;
@@ -46,6 +47,7 @@ export async function POST(req: NextRequest) {
       rows.push({
         transaction_date: cols[0] || new Date().toISOString().split("T")[0],
         store: cols[1] || "",
+        transaction_id: cols[2] || null,
         withdrawal,
         deposit,
         card_name: cols[9] || null,
@@ -57,11 +59,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "有効なデータがありません" }, { status: 400 });
   }
 
-  const { error } = await supabase.from("credit_payments").insert(rows);
+  // 既存の決済IDを取得して重複を除外
+  const txIds = rows.map((r) => r.transaction_id).filter(Boolean) as string[];
+  const existingIds = new Set<string>();
+
+  if (txIds.length > 0) {
+    const { data: existing } = await fetchAll(() =>
+      supabase.from("credit_payments").select("transaction_id").in("transaction_id", txIds)
+    );
+    for (const row of existing) {
+      if (row.transaction_id) existingIds.add(row.transaction_id);
+    }
+  }
+
+  const newRows = rows.filter((r) => !r.transaction_id || !existingIds.has(r.transaction_id));
+
+  if (newRows.length === 0) {
+    return NextResponse.json({ imported: 0, skipped: rows.length, message: "全て重複のためスキップしました" });
+  }
+
+  const { error } = await supabase.from("credit_payments").insert(newRows);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ imported: rows.length });
+  const skipped = rows.length - newRows.length;
+  return NextResponse.json({ imported: newRows.length, skipped });
 }

@@ -72,15 +72,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "有効なデータがありません" }, { status: 400 });
   }
 
-  // 既存の決済IDを取得して重複を除外
-  const txIds = rows.map((r) => r.transaction_id).filter(Boolean) as string[];
+  // 既存の決済IDを取得して重複を除外（.in()のURL長制限を回避するためバッチ分割）
+  const txIds = [...new Set(rows.map((r) => r.transaction_id).filter(Boolean) as string[])];
   const existingIds = new Set<string>();
 
-  if (txIds.length > 0) {
-    const { data: existing } = await fetchAll(() =>
-      supabase.from("credit_payments").select("transaction_id").in("transaction_id", txIds)
-    );
-    for (const row of existing) {
+  const IN_BATCH = 100;
+  for (let i = 0; i < txIds.length; i += IN_BATCH) {
+    const batch = txIds.slice(i, i + IN_BATCH);
+    const { data: existing } = await supabase
+      .from("credit_payments")
+      .select("transaction_id")
+      .in("transaction_id", batch);
+    for (const row of existing || []) {
       if (row.transaction_id) existingIds.add(row.transaction_id);
     }
   }

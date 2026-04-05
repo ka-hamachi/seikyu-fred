@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabase, fetchAll } from "@/lib/supabase";
 import type { DashboardSummary } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -17,29 +17,20 @@ export async function GET(req: NextRequest) {
   const lastDay = mon === 12 ? `${year + 1}-01-01` : `${year}-${String(mon + 1).padStart(2, "0")}-01`;
 
   const [salesRes, paymentsRes, creditsRes] = await Promise.all([
-    supabase
-      .from("sales_invoices")
-      .select("amount, status")
-      .gte("issue_date", firstDay)
-      .lt("issue_date", lastDay)
-      .limit(10000),
-    supabase
-      .from("payment_invoices")
-      .select("amount, status")
-      .gte("issue_date", firstDay)
-      .lt("issue_date", lastDay)
-      .limit(10000),
-    supabase
-      .from("credit_payments")
-      .select("withdrawal, deposit")
-      .gte("transaction_date", firstDay)
-      .lt("transaction_date", lastDay)
-      .limit(10000),
+    fetchAll(() =>
+      supabase.from("sales_invoices").select("amount, status").gte("issue_date", firstDay).lt("issue_date", lastDay)
+    ),
+    fetchAll(() =>
+      supabase.from("payment_invoices").select("amount, status").gte("issue_date", firstDay).lt("issue_date", lastDay)
+    ),
+    fetchAll(() =>
+      supabase.from("credit_payments").select("withdrawal, deposit").gte("transaction_date", firstDay).lt("transaction_date", lastDay)
+    ),
   ]);
 
-  const sales = salesRes.data || [];
-  const payments = paymentsRes.data || [];
-  const credits = creditsRes.data || [];
+  const sales = salesRes.data;
+  const payments = paymentsRes.data;
+  const credits = creditsRes.data;
 
   const totalSales = sales.reduce((sum, s) => sum + s.amount, 0);
   const totalPayments = payments.reduce((sum, p) => sum + p.amount, 0);

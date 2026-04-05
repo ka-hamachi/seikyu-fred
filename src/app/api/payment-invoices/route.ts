@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabase, fetchAll } from "@/lib/supabase";
 
 export async function GET() {
-  const { data, error } = await supabase
-    .from("payment_invoices")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(10000);
+  const { data, error } = await fetchAll(() =>
+    supabase.from("payment_invoices").select("*").order("created_at", { ascending: false })
+  );
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const invoices = (data || []).map((row) => ({
+  const invoices = data.map((row) => ({
     id: row.id,
     client: row.client,
     amount: row.amount,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabase, fetchAll } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -11,29 +11,20 @@ export async function GET(req: NextRequest) {
   const lastDay = `${year + 1}-01-01`;
 
   const [salesRes, paymentsRes, creditsRes] = await Promise.all([
-    supabase
-      .from("sales_invoices")
-      .select("amount, issue_date")
-      .gte("issue_date", firstDay)
-      .lt("issue_date", lastDay)
-      .limit(10000),
-    supabase
-      .from("payment_invoices")
-      .select("amount, issue_date")
-      .gte("issue_date", firstDay)
-      .lt("issue_date", lastDay)
-      .limit(10000),
-    supabase
-      .from("credit_payments")
-      .select("withdrawal, deposit, transaction_date")
-      .gte("transaction_date", firstDay)
-      .lt("transaction_date", lastDay)
-      .limit(10000),
+    fetchAll(() =>
+      supabase.from("sales_invoices").select("amount, issue_date").gte("issue_date", firstDay).lt("issue_date", lastDay)
+    ),
+    fetchAll(() =>
+      supabase.from("payment_invoices").select("amount, issue_date").gte("issue_date", firstDay).lt("issue_date", lastDay)
+    ),
+    fetchAll(() =>
+      supabase.from("credit_payments").select("withdrawal, deposit, transaction_date").gte("transaction_date", firstDay).lt("transaction_date", lastDay)
+    ),
   ]);
 
-  const sales = salesRes.data || [];
-  const payments = paymentsRes.data || [];
-  const credits = creditsRes.data || [];
+  const sales = salesRes.data;
+  const payments = paymentsRes.data;
+  const credits = creditsRes.data;
 
   // 月ごとに集計
   const months = Array.from({ length: 12 }, (_, i) => {

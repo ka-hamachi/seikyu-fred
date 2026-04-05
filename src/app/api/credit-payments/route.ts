@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabase, fetchAll } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -7,20 +7,20 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const month = searchParams.get("month");
 
-  let query = supabase
-    .from("credit_payments")
-    .select("*")
-    .order("transaction_date", { ascending: false })
-    .limit(10000);
+  const [y, m] = month ? month.split("-").map(Number) : [0, 0];
+  const start = month ? `${month}-01` : "";
+  const nextMonth = month
+    ? m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`
+    : "";
 
-  if (month) {
-    const [y, m] = month.split("-").map(Number);
-    const start = `${month}-01`;
-    const nextMonth = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`;
-    query = query.gte("transaction_date", start).lt("transaction_date", nextMonth);
-  }
-
-  const { data, error } = await query;
+  const { data, error } = await fetchAll(() => {
+    let q = supabase
+      .from("credit_payments")
+      .select("*")
+      .order("transaction_date", { ascending: false });
+    if (month) q = q.gte("transaction_date", start).lt("transaction_date", nextMonth);
+    return q;
+  });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

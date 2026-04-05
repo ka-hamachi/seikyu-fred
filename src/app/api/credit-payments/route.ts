@@ -81,15 +81,7 @@ export async function DELETE(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
 
-  // 一括削除: ボディからIDリストを受け取る
-  if (!id) {
-    const body = await req.json().catch(() => null);
-    const ids: string[] = body?.ids;
-    if (!ids || ids.length === 0) return NextResponse.json({ error: "id or ids required" }, { status: 400 });
-    const { error } = await supabase.from("credit_payments").delete().in("id", ids);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ success: true, deleted: ids.length });
-  }
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
   const { error } = await supabase.from("credit_payments").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

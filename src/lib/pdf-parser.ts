@@ -7,7 +7,8 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
  */
 export async function parsePdfWithGemini(
   buffer: Uint8Array,
-  type: "sales" | "payment" = "sales"
+  type: "sales" | "payment" = "sales",
+  mimeType: string = "application/pdf"
 ): Promise<{ client: string; amount: number }> {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
@@ -22,12 +23,12 @@ export async function parsePdfWithGemini(
     const result = await model.generateContent([
       {
         inlineData: {
-          mimeType: "application/pdf",
+          mimeType,
           data: base64,
         },
       },
       {
-        text: `この請求書PDFから以下の情報をJSON形式で返してください。JSONのみ返してください。
+        text: `この請求書から以下の情報をJSON形式で返してください。JSONのみ返してください。
 
 {"client": "名前", "amount": 数値}
 
@@ -62,7 +63,7 @@ export async function parsePdfWithGemini(
  * ファイル名から会社名を抽出（Geminiフォールバック用）
  */
 export function extractClientFromFileName(fileName: string): string {
-  const name = fileName.replace(/\.pdf$/i, "").trim();
+  const name = fileName.replace(/\.(pdf|png|jpe?g|webp)$/i, "").trim();
 
   const gotyuMatch = name.match(
     /^((?:株式会社|合同会社|有限会社)\s*[\S]+(?:\s+[\S]+)*?)\s*御中/

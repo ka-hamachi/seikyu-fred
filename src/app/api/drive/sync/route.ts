@@ -34,16 +34,16 @@ export async function POST(req: NextRequest) {
   auth.setCredentials({ access_token: accessToken });
   const drive = google.drive({ version: "v3", auth });
 
-  // 2. Collect all PDFs recursively (parallelized) + fetch existing DB records in parallel
-  const driveFiles = new Map<string, { id: string; name: string; sourceFolder: string }>();
+  // 2. Collect all invoice files (PDF + images) recursively + fetch existing DB records in parallel
+  const driveFiles = new Map<string, { id: string; name: string; mimeType: string; sourceFolder: string }>();
   const errors: string[] = [];
 
-  async function collectPdfs(folderId: string, folderName: string) {
-    // Fetch PDFs and subfolders in parallel
-    const [pdfRes, folderRes] = await Promise.all([
+  async function collectFiles(folderId: string, folderName: string) {
+    // Fetch invoice files (PDF, PNG, JPEG, WEBP) and subfolders in parallel
+    const [fileRes, folderRes] = await Promise.all([
       drive.files.list({
-        q: `'${folderId}' in parents and mimeType = 'application/pdf' and trashed = false`,
-        fields: "files(id, name)",
+        q: `'${folderId}' in parents and (mimeType = 'application/pdf' or mimeType = 'image/png' or mimeType = 'image/jpeg' or mimeType = 'image/webp') and trashed = false`,
+        fields: "files(id, name, mimeType)",
         pageSize: 1000,
         includeItemsFromAllDrives: true,
         supportsAllDrives: true,
@@ -57,13 +57,13 @@ export async function POST(req: NextRequest) {
       }),
     ]);
 
-    for (const file of pdfRes.data.files || []) {
-      driveFiles.set(file.id!, { id: file.id!, name: file.name!, sourceFolder: folderName });
+    for (const file of fileRes.data.files || []) {
+      driveFiles.set(file.id!, { id: file.id!, name: file.name!, mimeType: file.mimeType!, sourceFolder: folderName });
     }
 
     // Recurse subfolders in parallel
     await Promise.all(
-      (folderRes.data.files || []).map((sub) => collectPdfs(sub.id!, sub.name!))
+      (folderRes.data.files || []).map((sub) => collectFiles(sub.id!, sub.name!))
     );
   }
 
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     Promise.all(
       linkedFolders.map(async (folder) => {
         try {
-          await collectPdfs(folder.folder_id, folder.folder_name);
+          await collectFiles(folder.folder_id, folder.folder_name);
         } catch (err) {
           errors.push(`Folder ${folder.folder_name}: ${String(err)}`);
         }
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
   );
 
   // 3. Determine new and removed files
-  const newDriveFiles: [string, { id: string; name: string; sourceFolder: string }][] = [];
+  const newDriveFiles: [string, { id: string; name: string; mimeType: string; sourceFolder: string }][] = [];
   for (const [driveFileId, file] of driveFiles) {
     if (!existingByDriveId.has(driveFileId)) {
       newDriveFiles.push([driveFileId, file]);
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
           { responseType: "arraybuffer" }
         );
         const buffer = new Uint8Array(dlRes.data as ArrayBuffer);
-        const geminiResult = await parsePdfWithGemini(buffer, type === "sales" ? "sales" : "payment");
+        const geminiResult = await parsePdfWithGemini(buffer, type === "sales" ? "sales" : "payment", file.mimeType);
         client = geminiResult.client;
         amount = geminiResult.amount;
       } catch (err) {
@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
       }
 
       const { error: insertError } = await supabase.from(tableName).insert({
-        client: client || file.name.replace(".pdf", ""),
+        client: client || file.name.replace(/\.(pdf|png|jpe?g|webp)$/i, ""),
         amount,
         status: "unpaid",
         issue_date: month + "-01",

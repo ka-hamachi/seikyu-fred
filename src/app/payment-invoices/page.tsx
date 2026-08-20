@@ -278,10 +278,10 @@ export default function PaymentInvoicesPage() {
         </div>
       ) : (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
-          <table className="w-full min-w-[920px] table-fixed">
+          <table className="w-full min-w-[1030px] table-fixed">
             <colgroup>
               <col style={{ width: "40px" }} />
-              <col style={{ width: "160px" }} />
+              <col style={{ width: "270px" }} />
               <col style={{ width: "110px" }} />
               <col style={{ width: "120px" }} />
               <col style={{ width: "90px" }} />
@@ -319,13 +319,13 @@ export default function PaymentInvoicesPage() {
                       className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                     />
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 overflow-hidden">
                     {inv.driveFileId ? (
-                      <a href={`https://drive.google.com/file/d/${inv.driveFileId}/view`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline">{inv.client}</a>
+                      <a href={`https://drive.google.com/file/d/${inv.driveFileId}/view`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline truncate block">{inv.client}</a>
                     ) : (
-                      <div className="text-sm font-medium text-gray-800">{inv.client}</div>
+                      <div className="text-sm font-medium text-gray-800 truncate">{inv.client}</div>
                     )}
-                    {inv.pdfFileName && <div className="text-xs text-gray-400 mt-0.5">{inv.pdfFileName}</div>}
+                    {inv.pdfFileName && <div className="text-xs text-gray-400 mt-0.5 truncate">{inv.pdfFileName}</div>}
                   </td>
                   <td className="px-6 py-4 text-right text-sm font-semibold text-gray-800">{formatCurrency(inv.amount)}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">{inv.sourceFolder || "-"}</td>

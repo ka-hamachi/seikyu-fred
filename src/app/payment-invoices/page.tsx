@@ -278,7 +278,7 @@ export default function PaymentInvoicesPage() {
         </div>
       ) : (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
-          <table className="w-full min-w-[880px]">
+          <table className="w-full min-w-[880px] table-fixed">
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="px-6 py-4 w-10">
@@ -289,12 +289,12 @@ export default function PaymentInvoicesPage() {
                     className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                   />
                 </th>
-                <SortableHeader label="請求者" sortKey="client" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+                <SortableHeader label="請求者" sortKey="client" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} className="w-32" />
                 <SortableHeader label="金額" sortKey="amount" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} align="right" />
                 <SortableHeader label="フォルダ" sortKey="sourceFolder" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
                 <SortableHeader label="チェック" sortKey="checkStatus" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
                 <SortableHeader label="ステータス" sortKey="status" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-                <th className="text-left text-xs font-medium text-gray-400 px-6 py-4">コメント</th>
+                <th className="text-left text-xs font-medium text-gray-400 px-6 py-4 w-56">コメント</th>
                 <th className="text-right text-xs font-medium text-gray-400 px-6 py-4"></th>
               </tr>
             </thead>

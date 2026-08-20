@@ -7,16 +7,17 @@ interface SortableHeaderProps {
   currentDir: "asc" | "desc";
   onSort: (key: string) => void;
   align?: "left" | "right";
+  className?: string;
 }
 
-export default function SortableHeader({ label, sortKey, currentSort, currentDir, onSort, align = "left" }: SortableHeaderProps) {
+export default function SortableHeader({ label, sortKey, currentSort, currentDir, onSort, align = "left", className = "" }: SortableHeaderProps) {
   const isActive = currentSort === sortKey;
 
   return (
     <th
       className={`text-xs font-medium px-6 py-4 cursor-pointer select-none hover:text-gray-600 transition-colors ${
         align === "right" ? "text-right" : "text-left"
-      } ${isActive ? "text-gray-600" : "text-gray-400"}`}
+      } ${isActive ? "text-gray-600" : "text-gray-400"} ${className}`}
       onClick={() => onSort(sortKey)}
     >
       <span className="inline-flex items-center gap-1">

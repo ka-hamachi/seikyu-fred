@@ -57,16 +57,18 @@ export default function LinkedFolders({ type, month, accessToken, onSync }: Link
       const data = await res.json();
       if (data.error) {
         if (!silent) setSyncMessage(`エラー: ${data.error}`);
-      } else if (data.added > 0 || data.removed > 0) {
+      } else {
         const parts: string[] = [];
         if (data.added > 0) parts.push(`${data.added}件追加`);
         if (data.removed > 0) parts.push(`${data.removed}件削除`);
-        setSyncMessage(parts.join(" / "));
-        onSync();
-      } else if (data.errors && data.errors.length > 0) {
-        setSyncMessage(`エラー: ${data.errors[0]}`);
-      } else if (!silent) {
-        setSyncMessage("新しい請求書はありませんでした");
+        if (data.removalSkipped) parts.push("フォルダの読み込みに失敗したため削除はスキップしました");
+        if (data.errors && data.errors.length > 0) parts.push(`エラー: ${data.errors[0]}`);
+        if (data.added > 0 || data.removed > 0) onSync();
+        if (parts.length > 0) {
+          setSyncMessage(parts.join(" / "));
+        } else if (!silent) {
+          setSyncMessage("新しい請求書はありませんでした");
+        }
       }
     } catch (err) {
       if (!silent) setSyncMessage(`通信エラー: ${String(err)}`);

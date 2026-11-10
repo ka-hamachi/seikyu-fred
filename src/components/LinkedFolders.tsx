@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import DriveImportModal from "./DriveImportModal";
+import type { LinkedFolderType } from "@/types";
 
 interface LinkedFolder {
   id: string;
@@ -14,7 +15,7 @@ interface LinkedFolder {
 }
 
 interface LinkedFoldersProps {
-  type: "sales" | "payment";
+  type: LinkedFolderType;
   month: string;
   accessToken: string | null;
   onSync: () => void;

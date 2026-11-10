@@ -57,9 +57,47 @@ const navItems = [
   },
 ];
 
+// HighTore事業（デスクトップでは「HighTore」見出しの下に表示）
+const hightoreNavItems = [
+  {
+    href: "/hightore",
+    label: "ダッシュボード",
+    shortLabel: "HTホーム",
+    icon: navItems[0].icon,
+  },
+  {
+    href: "/hightore/payment-invoices",
+    label: "支払い請求書",
+    shortLabel: "HT支払い",
+    icon: navItems[2].icon,
+  },
+];
+
+const allNavItems = [...navItems, ...hightoreNavItems];
+
 export default function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
+
+  const renderDesktopLink = (item: (typeof allNavItems)[number]) => {
+    const isActive = pathname === item.href;
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+          isActive
+            ? "bg-blue-50 text-blue-700 shadow-sm"
+            : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+        }`}
+      >
+        <span className={isActive ? "text-blue-600" : "text-gray-400"}>
+          {item.icon}
+        </span>
+        {item.label}
+      </Link>
+    );
+  };
 
   return (
     <>
@@ -71,26 +109,13 @@ export default function Sidebar() {
           </h1>
           <p className="text-xs text-gray-400 mt-1">Invoice Manager</p>
         </div>
-        <nav className="flex-1 p-4 space-y-1">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  isActive
-                    ? "bg-blue-50 text-blue-700 shadow-sm"
-                    : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
-                }`}
-              >
-                <span className={isActive ? "text-blue-600" : "text-gray-400"}>
-                  {item.icon}
-                </span>
-                {item.label}
-              </Link>
-            );
-          })}
+        <nav className="flex-1">
+          <div className="p-4 space-y-1">{navItems.map(renderDesktopLink)}</div>
+          <div className="px-6 pt-6 pb-2 border-t border-gray-100">
+            {/* 「請求管理」と同じ日本語フォントで描く */}
+            <h2 className="font-jp text-xl font-bold text-gray-800 tracking-tight">HighTore</h2>
+          </div>
+          <div className="p-4 pt-2 space-y-1">{hightoreNavItems.map(renderDesktopLink)}</div>
         </nav>
         <div className="p-4 border-t border-gray-100 space-y-3">
           {session ? (
@@ -134,14 +159,15 @@ export default function Sidebar() {
 
       {/* Mobile bottom navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-bottom">
-        <div className="flex justify-around items-center h-16">
-          {navItems.map((item) => {
+        {/* 項目が増えて幅が足りないときは横スクロール */}
+        <div className="flex items-center h-16 overflow-x-auto">
+          {allNavItems.map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors ${
+                className={`flex flex-col items-center justify-center gap-0.5 flex-1 shrink-0 min-w-16 h-full transition-colors ${
                   isActive ? "text-blue-600" : "text-gray-400"
                 }`}
               >
@@ -153,7 +179,7 @@ export default function Sidebar() {
           {session ? (
             <button
               onClick={() => signOut()}
-              className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full text-emerald-500"
+              className="flex flex-col items-center justify-center gap-0.5 flex-1 shrink-0 min-w-16 h-full text-emerald-500"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
@@ -163,7 +189,7 @@ export default function Sidebar() {
           ) : (
             <button
               onClick={() => signIn("google")}
-              className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full text-gray-400"
+              className="flex flex-col items-center justify-center gap-0.5 flex-1 shrink-0 min-w-16 h-full text-gray-400"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>

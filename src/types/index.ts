@@ -27,6 +27,9 @@ export interface PaymentInvoice {
   createdAt: string;
 }
 
+// 連携フォルダの種別（Drive同期の取り込み先テーブルに対応）
+export type LinkedFolderType = "sales" | "payment" | "hightore_payment";
+
 export interface CreditPayment {
   id: string;
   store: string;
@@ -48,4 +51,12 @@ export interface DashboardSummary {
   creditCount: number;
   unpaidSalesCount: number;
   unpaidPaymentsCount: number;
+}
+
+export interface HighToreDashboardSummary {
+  totalPayments: number;
+  paymentsCount: number;
+  unpaidPaymentsAmount: number;
+  unpaidPaymentsCount: number;
+  uncheckedPaymentsCount: number;
 }

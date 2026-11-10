@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { google, drive_v3 } from "googleapis";
 import { supabase } from "@/lib/supabase";
 import { parsePdfWithGemini, extractClientFromFileName } from "@/lib/pdf-parser";
+import type { LinkedFolderType } from "@/types";
+
+const TABLE_BY_TYPE: Record<LinkedFolderType, string> = {
+  sales: "sales_invoices",
+  payment: "payment_invoices",
+  hightore_payment: "hightore_payment_invoices",
+};
 
 export async function POST(req: NextRequest) {
   const accessToken = req.headers.get("x-google-token");
@@ -14,7 +21,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "type and month required" }, { status: 400 });
   }
 
-  const tableName = type === "sales" ? "sales_invoices" : "payment_invoices";
+  const tableName = TABLE_BY_TYPE[type as LinkedFolderType];
+  if (!tableName) {
+    return NextResponse.json({ error: `unknown type: ${type}` }, { status: 400 });
+  }
 
   // 1. Get linked folders
   const { data: linkedFolders, error: foldersError } = await supabase

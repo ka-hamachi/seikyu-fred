@@ -61,13 +61,13 @@ const navItems = [
 const hightoreNavItems = [
   {
     href: "/hightore",
-    label: "ダッシュボード",
+    label: "【HT】ダッシュボード",
     shortLabel: "HTホーム",
     icon: navItems[0].icon,
   },
   {
     href: "/hightore/payment-invoices",
-    label: "支払い請求書",
+    label: "【HT】支払い請求書",
     shortLabel: "HT支払い",
     icon: navItems[2].icon,
   },

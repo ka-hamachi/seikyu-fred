@@ -79,8 +79,8 @@ export interface HighToreDeposit {
 
 export interface DepositSyncResult {
   provider: DepositProvider;
-  // webhook: APIで取りに行けず、決済ごとの通知で自動反映されるサービス（BluePay）
-  status: "ok" | "not_configured" | "error" | "webhook";
+  // csv: APIで取りに行けず、振込申請CSVで取り込むサービス（BluePay）
+  status: "ok" | "not_configured" | "error" | "csv";
   count: number;
   error?: string;
 }

@@ -4,7 +4,7 @@ import { fincodeAdapter } from "./fincode";
 import { amazonPayAdapter } from "./amazon-pay";
 import { stripeAdapter } from "./stripe";
 
-// BluePay は一覧を取得するAPIがないため、ここではなく Webhook（/api/hightore/bluepay/webhook）で取り込む
+// BluePay は振込情報を取得するAPIがないため、ここではなく振込申請CSV（/api/hightore/deposits/bluepay-csv）で取り込む
 export const DEPOSIT_ADAPTERS: Partial<Record<DepositProvider, DepositProviderAdapter>> = {
   fincode: fincodeAdapter,
   amazon_pay: amazonPayAdapter,

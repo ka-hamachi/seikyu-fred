@@ -59,9 +59,9 @@ async function syncDeposits(from: string, to: string): Promise<DepositSyncResult
   // サービスごとに並列で取得し、1つが失敗しても他は保存する
   return Promise.all(
     DEPOSIT_PROVIDERS.map(async ({ id: provider }): Promise<DepositSyncResult> => {
-      // BluePay は一覧を取得するAPIがなく、Webhook（/api/hightore/bluepay/webhook）で反映する
+      // BluePay は振込情報を取得するAPIがなく、振込申請CSV（/api/hightore/deposits/bluepay-csv）で取り込む
       if (provider === "bluepay") {
-        return { provider, status: process.env.BLUEPAY_TENANT_ID ? "webhook" : "not_configured", count: 0 };
+        return { provider, status: "csv", count: 0 };
       }
 
       const adapter = DEPOSIT_ADAPTERS[provider];

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import type { DepositProvider, DepositSyncResult, HighToreDeposit } from "@/types";
 import { formatCurrency, getCurrentMonth, generateMonthOptions } from "@/lib/utils";
 import { DEPOSIT_PROVIDERS, DEPOSIT_PROVIDER_LABELS } from "@/lib/deposit-providers/labels";
@@ -10,7 +10,7 @@ function describeSyncResult(r: DepositSyncResult): string {
   const label = DEPOSIT_PROVIDER_LABELS[r.provider];
   if (r.status === "ok") return `${label}: ${r.count}件`;
   if (r.status === "not_configured") return `${label}: 未設定`;
-  if (r.status === "webhook") return `${label}: 決済ごとに自動反映`;
+  if (r.status === "csv") return `${label}: 振込CSVで取込`;
   return `${label}: エラー（${r.error}）`;
 }
 
@@ -22,6 +22,9 @@ export default function HighToreDepositsPage() {
   const [syncing, setSyncing] = useState(false);
   const [syncResults, setSyncResults] = useState<DepositSyncResult[] | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [csvImporting, setCsvImporting] = useState(false);
+  const [csvMessage, setCsvMessage] = useState<string | null>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
   const monthOptions = generateMonthOptions();
 
   const fetchDeposits = useCallback(() => {
@@ -42,6 +45,7 @@ export default function HighToreDepositsPage() {
   const handleSync = async (months: number) => {
     setSyncing(true);
     setSyncResults(null);
+    setCsvMessage(null);
     try {
       const res = await fetch("/api/hightore/deposits/sync", {
         method: "POST",
@@ -59,6 +63,32 @@ export default function HighToreDepositsPage() {
     fetchDeposits();
   };
 
+  // BluePay の振込申請CSV（管理画面の振込申請履歴の「CSV出力」）をまとめて取り込む
+  const handleCsvImport = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setCsvImporting(true);
+    setSyncResults(null);
+    setCsvMessage(null);
+    try {
+      const formData = new FormData();
+      Array.from(files).forEach((f) => formData.append("files", f));
+      const res = await fetch("/api/hightore/deposits/bluepay-csv", { method: "POST", body: formData });
+      const data = await res.json();
+      setCsvMessage(
+        data.results
+          ? data.results.map((r: { status: string; message: string; fileName: string }) =>
+              r.status === "imported" ? `取込: ${r.message}` : `${r.fileName}: ${r.message}`
+            ).join(" / ")
+          : `エラー: ${data.error}`
+      );
+    } catch (err) {
+      setCsvMessage(`通信エラー: ${String(err)}`);
+    }
+    if (csvInputRef.current) csvInputRef.current.value = "";
+    setCsvImporting(false);
+    fetchDeposits();
+  };
+
   const handleAdd = async (data: { provider: DepositProvider; depositDate: string; amount: number; memo: string }) => {
     await fetch("/api/hightore/deposits", {
       method: "POST",
@@ -73,7 +103,7 @@ export default function HighToreDepositsPage() {
     const isManual = deposit.externalId.startsWith("manual-");
     const message = isManual
       ? "この入金を削除しますか？"
-      : "この入金を削除しますか？（APIで取り込んだ入金は、次の同期でまた取り込まれます）";
+      : "この入金を削除しますか？（APIやCSVで取り込んだ入金は、次の同期・CSV取込でまた取り込まれます）";
     if (!confirm(message)) return;
     await fetch(`/api/hightore/deposits?id=${deposit.id}`, { method: "DELETE" });
     fetchDeposits();
@@ -100,6 +130,7 @@ export default function HighToreDepositsPage() {
             onChange={(e) => {
               setLoading(true);
               setSyncResults(null);
+              setCsvMessage(null);
               setSelectedMonth(e.target.value);
             }}
             className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-200 transition-all cursor-pointer"
@@ -114,6 +145,21 @@ export default function HighToreDepositsPage() {
           >
             + 手動追加
           </button>
+          <input
+            ref={csvInputRef}
+            type="file"
+            accept=".csv"
+            multiple
+            className="hidden"
+            onChange={(e) => handleCsvImport(e.target.files)}
+          />
+          <button
+            onClick={() => csvInputRef.current?.click()}
+            disabled={csvImporting}
+            className="px-4 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            {csvImporting ? "取込中..." : "BluePay振込CSVを取込"}
+          </button>
           <button
             onClick={() => handleSync(1)}
             disabled={syncing}
@@ -127,9 +173,11 @@ export default function HighToreDepositsPage() {
       {/* 同期結果 */}
       <div className="flex items-center justify-between gap-3 mb-6 bg-white rounded-2xl px-5 py-3 shadow-sm border border-gray-100">
         <p className="text-xs text-gray-500">
-          {syncResults
-            ? syncResults.map(describeSyncResult).join(" / ")
-            : "各サービスのAPIから、選んだ月に振り込まれた入金を取り込みます"}
+          {csvMessage
+            ? csvMessage
+            : syncResults
+              ? syncResults.map(describeSyncResult).join(" / ")
+              : "fincode・Amazon Pay・StripeはAPIから毎日自動で取り込みます。BluePayは振込申請履歴の「CSV出力」を取り込んでください"}
         </p>
         <button
           onClick={() => handleSync(12)}
@@ -179,14 +227,14 @@ export default function HighToreDepositsPage() {
             <tbody>
               {deposits.map((d) => (
                 <tr key={d.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                  <td className="px-6 py-4 text-sm text-gray-700">{d.depositDate}</td>
+                  <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{d.depositDate}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">
                     {DEPOSIT_PROVIDER_LABELS[d.provider]}
                     {d.externalId.startsWith("manual-") && (
                       <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">手動</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-right text-sm font-semibold text-gray-800">{formatCurrency(d.amount)}</td>
+                  <td className="px-6 py-4 text-right text-sm font-semibold text-gray-800 whitespace-nowrap">{formatCurrency(d.amount)}</td>
                   <td className="px-6 py-4 text-xs text-gray-500">{d.memo || "-"}</td>
                   <td className="px-6 py-4 text-right">
                     <button onClick={() => handleDelete(d)} className="text-gray-300 hover:text-red-400 transition-colors">

@@ -93,7 +93,7 @@ export default function HighToreDashboard() {
                 <p className={`text-2xl md:text-4xl font-bold tracking-tight ${summary.grossProfit >= 0 ? "text-gray-800" : "text-red-500"}`}>
                   {formatCurrency(summary.grossProfit)}
                 </p>
-                <p className="text-xs text-gray-400 mt-2">入金売上 − 支払い請求書</p>
+                <p className="text-xs text-gray-400 mt-2">入金売上 − 支払い請求書 + 在庫</p>
               </div>
               <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${summary.grossProfit >= 0 ? "bg-emerald-50" : "bg-red-50"}`}>
                 <svg className={`w-8 h-8 ${summary.grossProfit >= 0 ? "text-emerald-500" : "text-red-500"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -143,19 +143,25 @@ export default function HighToreDashboard() {
               <p className="text-xs text-gray-400">
                 {summary.paymentsCount}件 / 未支払い: {summary.unpaidPaymentsCount}件（{formatCurrency(summary.unpaidPaymentsAmount)}）
               </p>
+              <p className={`text-xs mt-1 ${summary.uncheckedPaymentsCount > 0 ? "text-red-500" : "text-gray-400"}`}>
+                未確認：{summary.uncheckedPaymentsCount}件
+              </p>
             </Link>
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <Link
+              href="/hightore/inventory"
+              className="block bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:border-purple-200 transition-colors"
+            >
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-red-100 text-red-600">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-purple-100 text-purple-600">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                   </svg>
                 </div>
-                <p className="text-sm font-medium text-gray-500">未確認</p>
+                <p className="text-sm font-medium text-gray-500">在庫</p>
               </div>
-              <p className="text-2xl font-bold text-gray-800 mb-1">{summary.uncheckedPaymentsCount}件</p>
-              <p className="text-xs text-gray-400">チェックが「未確認」の支払い請求書</p>
-            </div>
+              <p className="text-2xl font-bold text-gray-800 mb-1">{formatCurrency(summary.inventoryAmount)}</p>
+              <p className="text-xs text-gray-400">入力方法は準備中</p>
+            </Link>
           </div>
         </>
       ) : null}

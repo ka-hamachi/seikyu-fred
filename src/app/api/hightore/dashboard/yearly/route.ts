@@ -38,12 +38,16 @@ export async function GET(req: NextRequest) {
       .filter((p) => p.issue_date.startsWith(prefix))
       .reduce((sum, p) => sum + p.amount, 0);
 
+    // 在庫の入力方法が決まるまでは0として扱う
+    const monthInventory = 0;
+
     return {
       month,
       label: `${month}月`,
       deposits: monthDeposits,
       payments: monthPayments,
-      grossProfit: monthDeposits - monthPayments,
+      inventory: monthInventory,
+      grossProfit: monthDeposits - monthPayments + monthInventory,
     };
   });
 

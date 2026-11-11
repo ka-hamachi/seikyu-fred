@@ -61,6 +61,7 @@ export interface HighToreDashboardSummary {
   unpaidPaymentsAmount: number;
   unpaidPaymentsCount: number;
   uncheckedPaymentsCount: number;
+  inventoryAmount: number;
   grossProfit: number;
 }
 

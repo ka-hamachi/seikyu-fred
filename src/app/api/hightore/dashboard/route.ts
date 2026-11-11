@@ -46,6 +46,8 @@ export async function GET(req: NextRequest) {
   }
   const totalDeposits = Object.values(depositsByProvider).reduce((sum, v) => sum + v, 0);
   const totalPayments = payments.reduce((sum, p) => sum + p.amount, 0);
+  // 在庫の入力方法が決まるまでは0として扱う
+  const inventoryAmount = 0;
 
   const summary: HighToreDashboardSummary = {
     totalDeposits,
@@ -55,7 +57,8 @@ export async function GET(req: NextRequest) {
     unpaidPaymentsAmount: unpaid.reduce((sum, p) => sum + p.amount, 0),
     unpaidPaymentsCount: unpaid.length,
     uncheckedPaymentsCount: payments.filter((p) => p.check_status !== "checked").length,
-    grossProfit: totalDeposits - totalPayments,
+    inventoryAmount,
+    grossProfit: totalDeposits - totalPayments + inventoryAmount,
   };
 
   return NextResponse.json(summary);

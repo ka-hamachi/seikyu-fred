@@ -54,9 +54,33 @@ export interface DashboardSummary {
 }
 
 export interface HighToreDashboardSummary {
+  totalDeposits: number;
+  depositsByProvider: Record<DepositProvider, number>;
   totalPayments: number;
   paymentsCount: number;
   unpaidPaymentsAmount: number;
   unpaidPaymentsCount: number;
   uncheckedPaymentsCount: number;
+  grossProfit: number;
+}
+
+// HighTore 入金売上の入金元
+export type DepositProvider = "fincode" | "amazon_pay" | "stripe" | "bluepay";
+
+export interface HighToreDeposit {
+  id: string;
+  provider: DepositProvider;
+  externalId: string;
+  depositDate: string;
+  amount: number;
+  memo: string;
+  createdAt: string;
+}
+
+export interface DepositSyncResult {
+  provider: DepositProvider;
+  // webhook: APIで取りに行けず、決済ごとの通知で自動反映されるサービス（BluePay）
+  status: "ok" | "not_configured" | "error" | "webhook";
+  count: number;
+  error?: string;
 }

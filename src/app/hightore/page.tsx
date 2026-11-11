@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import type { HighToreDashboardSummary } from "@/types";
 import { formatCurrency, getCurrentMonth, generateMonthOptions } from "@/lib/utils";
+import { DEPOSIT_PROVIDERS } from "@/lib/deposit-providers/labels";
 import MonthlyBarChart, { type MonthlyBarData } from "@/components/MonthlyBarChart";
 
 export default function HighToreDashboard() {
@@ -30,10 +31,10 @@ export default function HighToreDashboard() {
       .then((res) => res.json())
       .then((data) =>
         setYearlyData(
-          (data.months || []).map((m: { month: number; label: string; payments: number }) => ({
+          (data.months || []).map((m: { month: number; label: string; grossProfit: number }) => ({
             month: m.month,
             label: m.label,
-            value: m.payments,
+            value: m.grossProfit,
           }))
         )
       );
@@ -69,9 +70,9 @@ export default function HighToreDashboard() {
         </select>
       </div>
 
-      {/* 年間支払い推移グラフ */}
+      {/* 年間粗利推移グラフ */}
       {yearlyData.length > 0 && (
-        <MonthlyBarChart title={`${currentYear}年 支払い推移`} data={yearlyData} tone="cost" />
+        <MonthlyBarChart title={`${currentYear}年 粗利推移`} data={yearlyData} tone="profit" />
       )}
 
       {loading ? (
@@ -84,41 +85,65 @@ export default function HighToreDashboard() {
         </div>
       ) : summary ? (
         <>
-          {/* Payments Total Card */}
-          <Link
-            href="/hightore/payment-invoices"
-            className="block bg-white rounded-2xl p-5 md:p-8 mb-6 shadow-sm border border-gray-100 hover:border-orange-200 transition-colors"
-          >
+          {/* Gross Profit Card */}
+          <div className="bg-white rounded-2xl p-5 md:p-8 mb-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-400 mb-2">{selectedLabel}の支払い請求書</p>
-                <p className="text-2xl md:text-4xl font-bold tracking-tight text-gray-800">
-                  {formatCurrency(summary.totalPayments)}
+                <p className="text-sm font-medium text-gray-400 mb-2">{selectedLabel}の粗利</p>
+                <p className={`text-2xl md:text-4xl font-bold tracking-tight ${summary.grossProfit >= 0 ? "text-gray-800" : "text-red-500"}`}>
+                  {formatCurrency(summary.grossProfit)}
                 </p>
-                <p className="text-xs text-gray-400 mt-2">{summary.paymentsCount}件</p>
+                <p className="text-xs text-gray-400 mt-2">入金売上 − 支払い請求書</p>
               </div>
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-orange-50">
-                <svg className="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${summary.grossProfit >= 0 ? "bg-emerald-50" : "bg-red-50"}`}>
+                <svg className={`w-8 h-8 ${summary.grossProfit >= 0 ? "text-emerald-500" : "text-red-500"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
             </div>
-          </Link>
+          </div>
 
           {/* Detail Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <Link
+              href="/hightore/deposits"
+              className="block bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:border-blue-200 transition-colors"
+            >
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-amber-100 text-amber-600">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-blue-100 text-blue-600">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                   </svg>
                 </div>
-                <p className="text-sm font-medium text-gray-500">未支払い</p>
+                <p className="text-sm font-medium text-gray-500">入金売上</p>
               </div>
-              <p className="text-2xl font-bold text-gray-800 mb-1">{formatCurrency(summary.unpaidPaymentsAmount)}</p>
-              <p className="text-xs text-gray-400">{summary.unpaidPaymentsCount}件</p>
-            </div>
+              <p className="text-2xl font-bold text-gray-800 mb-2">{formatCurrency(summary.totalDeposits)}</p>
+              <div className="space-y-0.5">
+                {DEPOSIT_PROVIDERS.map((p) => (
+                  <div key={p.id} className="flex justify-between text-xs text-gray-400">
+                    <span>{p.label}</span>
+                    <span>{formatCurrency(summary.depositsByProvider[p.id])}</span>
+                  </div>
+                ))}
+              </div>
+            </Link>
+            <Link
+              href="/hightore/payment-invoices"
+              className="block bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:border-orange-200 transition-colors"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-orange-100 text-orange-600">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                  </svg>
+                </div>
+                <p className="text-sm font-medium text-gray-500">支払い請求書</p>
+              </div>
+              <p className="text-2xl font-bold text-gray-800 mb-1">{formatCurrency(summary.totalPayments)}</p>
+              <p className="text-xs text-gray-400">
+                {summary.paymentsCount}件 / 未支払い: {summary.unpaidPaymentsCount}件（{formatCurrency(summary.unpaidPaymentsAmount)}）
+              </p>
+            </Link>
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-red-100 text-red-600">
@@ -129,7 +154,7 @@ export default function HighToreDashboard() {
                 <p className="text-sm font-medium text-gray-500">未確認</p>
               </div>
               <p className="text-2xl font-bold text-gray-800 mb-1">{summary.uncheckedPaymentsCount}件</p>
-              <p className="text-xs text-gray-400">チェックが「未確認」の請求書</p>
+              <p className="text-xs text-gray-400">チェックが「未確認」の支払い請求書</p>
             </div>
           </div>
         </>

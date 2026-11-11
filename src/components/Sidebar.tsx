@@ -66,6 +66,12 @@ const hightoreNavItems = [
     icon: navItems[0].icon,
   },
   {
+    href: "/hightore/deposits",
+    label: "【HT】入金売上",
+    shortLabel: "HT入金",
+    icon: navItems[1].icon,
+  },
+  {
     href: "/hightore/payment-invoices",
     label: "【HT】支払い請求書",
     shortLabel: "HT支払い",

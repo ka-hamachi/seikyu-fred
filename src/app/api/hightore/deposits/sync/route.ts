@@ -32,8 +32,32 @@ export async function POST(req: NextRequest) {
   const from = `${addMonths(month, -(Math.min(Math.max(Number(months) || 1, 1), 24) - 1))}-01`;
   const to = nextMonthStart(month);
 
+  return NextResponse.json({ from, to, results: await syncDeposits(from, to) });
+}
+
+/**
+ * Vercel Cron（vercel.json）から毎日呼ばれる自動同期。先月と今月の分を取り込む
+ * （同期の押し忘れや、Amazon Pay の決済レポートが90日で消えることによる取りこぼしを防ぐ）
+ * Vercel は環境変数 CRON_SECRET を Authorization ヘッダーに付けて呼ぶので、それ以外からは実行させない
+ */
+export async function GET(req: NextRequest) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const thisMonth = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 7); // 日本時間の今月
+  const from = `${addMonths(thisMonth, -1)}-01`;
+  const to = nextMonthStart(thisMonth);
+  const results = await syncDeposits(from, to);
+  console.log("[deposits cron]", from, to, JSON.stringify(results));
+
+  return NextResponse.json({ from, to, results });
+}
+
+async function syncDeposits(from: string, to: string): Promise<DepositSyncResult[]> {
   // サービスごとに並列で取得し、1つが失敗しても他は保存する
-  const results: DepositSyncResult[] = await Promise.all(
+  return Promise.all(
     DEPOSIT_PROVIDERS.map(async ({ id: provider }): Promise<DepositSyncResult> => {
       // BluePay は一覧を取得するAPIがなく、Webhook（/api/hightore/bluepay/webhook）で反映する
       if (provider === "bluepay") {
@@ -68,6 +92,4 @@ export async function POST(req: NextRequest) {
       }
     })
   );
-
-  return NextResponse.json({ from, to, results });
 }

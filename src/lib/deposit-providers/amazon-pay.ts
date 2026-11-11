@@ -1,12 +1,18 @@
 import { WebStoreClient } from "@amazonpay/amazon-pay-api-sdk-nodejs";
 import type { DepositProviderAdapter, FetchedDeposit } from "./types";
 
-// Amazon Pay の決済レポート（2週間ごとに自動作成）のうち、銀行口座への送金（TransactionType = Transfer）を入金として取り込む
+// Amazon Pay の決済グループ（2週間ごと、決済レポート1つ = 決済グループ1つ）ごとに、銀行へ送金される額を入金として取り込む
 // 環境変数: AMAZON_PAY_PUBLIC_KEY_ID / AMAZON_PAY_PRIVATE_KEY（セラーセントラルのインテグレーションセントラルで作成するキーペア）
-// ※ 決済レポートはAmazon側に90日しか残らないため、それより前の入金は取得できない
-// ※ レポートに振込日の列はなく、送金の計上日（TransactionPostedDate）を振込日として使う（口座着金はその数営業日後）
+//
+// レポート内の送金行（TransactionType = Transfer）は「1つ前の決済グループ」の送金で、次のレポートが出るまで現れない。
+// そのため送金行は使わず、決済グループの明細（送金行以外）の NetTransactionAmount の合計＝送金額として、
+// 期間終了直後（約2時間後）に送金されるので、期間終了の3時間後の日付を振込日として計上する。
+// ※ 決済レポートはAmazon側に90日しか残らないため、それより前の入金は取得できない（毎日の自動同期で取りこぼしを防ぐ）
 
 const SETTLEMENT_REPORT = "_GET_FLAT_FILE_OFFAMAZONPAYMENTS_SETTLEMENT_DATA_";
+// 期間終了から送金の計上までの時間（実績は約2時間20分）
+const TRANSFER_DELAY_MS = 3 * 60 * 60 * 1000;
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 interface AmazonPayReport {
   reportId: string;
@@ -43,10 +49,14 @@ function parseCompactTime(value?: string): number | null {
   return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]) : null;
 }
 
-// "2026-10-29T13:43:43 +0000"（時刻とタイムゾーンの間にスペースあり）→ 日本時間の "2026-10-29"（読めなければ null）
-function postedDateToJst(value: string): string | null {
-  const ms = Date.parse(value.trim().replace(/\s*([+-]\d{2}):?(\d{2})$/, "$1:$2"));
-  return Number.isNaN(ms) ? null : new Date(ms + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+// "2026-10-29T22:43:43 +0900"（時刻とタイムゾーンの間にスペースあり）→ ミリ秒（読めなければ null）
+function parseReportTime(value?: string): number | null {
+  const ms = Date.parse((value || "").trim().replace(/\s*([+-]\d{2}):?(\d{2})$/, "$1:$2"));
+  return Number.isNaN(ms) ? null : ms;
+}
+
+function toJstDate(ms: number): string {
+  return new Date(ms + JST_OFFSET_MS).toISOString().slice(0, 10);
 }
 
 function decode(bytes: ArrayBuffer): string {
@@ -70,37 +80,39 @@ function splitLine(line: string, delimiter: string): string[] {
   return cols;
 }
 
-// 決済レポートから送金（Transfer）の行を取り出す
-function parseTransfers(text: string) {
+// 決済レポートから、決済グループIDと期間、送金額（送金行以外の明細の合計）を取り出す
+function parseSettlement(text: string) {
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
   const headerIndex = lines.findIndex((l) => l.includes("TransactionPostedDate") && l.includes("TransactionType"));
   if (headerIndex < 0) throw new Error("決済レポートの形式を読み取れませんでした");
 
   const delimiter = lines[headerIndex].includes("\t") ? "\t" : ",";
-  const header = splitLine(lines[headerIndex], delimiter);
-  const col = (name: string) => header.indexOf(name);
-  const iDate = col("TransactionPostedDate");
-  const iType = col("TransactionType");
-  const iAmount = col("TransactionAmount");
-  const iSettlement = col("SettlementId");
-  const iTransaction = col("AmazonTransactionId");
-  const iCurrency = col("CurrencyCode");
-  if (iAmount < 0) throw new Error("決済レポートに TransactionAmount 列がありません");
 
-  return lines.slice(headerIndex + 1).flatMap((line) => {
+  // 明細の前にある "SettlementStartDate","…" などの見出し情報（JPの資料では SettlementEndData という綴りもある）
+  const meta = Object.fromEntries(lines.slice(0, headerIndex).map((l) => splitLine(l, delimiter).slice(0, 2)));
+  const startMs = parseReportTime(meta.SettlementStartDate);
+  const endMs = parseReportTime(meta.SettlementEndDate || meta.SettlementEndData);
+
+  const header = splitLine(lines[headerIndex], delimiter);
+  const iType = header.indexOf("TransactionType");
+  const iNet = header.indexOf("NetTransactionAmount");
+  const iSettlement = header.indexOf("SettlementId");
+  const iCurrency = header.indexOf("CurrencyCode");
+  if (iNet < 0) throw new Error("決済レポートに NetTransactionAmount 列がありません");
+
+  let settlementId = "";
+  let net = 0;
+  for (const line of lines.slice(headerIndex + 1)) {
     const cols = splitLine(line, delimiter);
-    if (cols[iType] !== "Transfer") return [];
+    if (cols[iType] === "Transfer") continue;
     if (iCurrency >= 0 && cols[iCurrency] && cols[iCurrency] !== "JPY") {
-      throw new Error(`円以外の送金があります: ${cols[iCurrency]}`);
+      throw new Error(`円以外の取引があります: ${cols[iCurrency]}`);
     }
-    return [{
-      postedDate: postedDateToJst(cols[iDate] || ""),
-      settlementId: cols[iSettlement] || "",
-      transactionId: cols[iTransaction] || "",
-      // 送金はレポート上マイナスで記載されるので絶対値にする
-      amount: Math.abs(Math.round(Number((cols[iAmount] || "0").replace(/[^0-9.-]/g, "")) || 0)),
-    }];
-  });
+    settlementId ||= cols[iSettlement] || "";
+    net += Number((cols[iNet] || "0").replace(/[^0-9.-]/g, "")) || 0;
+  }
+
+  return { settlementId, startMs, endMs, amount: Math.round(net) };
 }
 
 export const amazonPayAdapter: DepositProviderAdapter = {
@@ -129,13 +141,12 @@ export const amazonPayAdapter: DepositProviderAdapter = {
       throw toError(err);
     }
 
-    // 対象期間と重ならないレポートは読まない（日付のずれを考えて前後2日広げる）
+    // 振込日（期間終了の3時間後）が対象期間に入りそうなレポートだけ読む（前後2日の余裕を持たせる）
     const fromMs = Date.parse(`${from}T00:00:00+09:00`) - 2 * 86400000;
     const toMs = Date.parse(`${to}T00:00:00+09:00`) + 2 * 86400000;
     const targets = reports.filter((r) => {
-      const start = parseCompactTime(r.startTime);
       const end = parseCompactTime(r.endTime);
-      return r.reportDocumentId && !(end !== null && end < fromMs) && !(start !== null && start > toMs);
+      return r.reportDocumentId && (end === null || (end + TRANSFER_DELAY_MS >= fromMs && end + TRANSFER_DELAY_MS < toMs));
     });
 
     const deposits: FetchedDeposit[] = [];
@@ -152,14 +163,23 @@ export const amazonPayAdapter: DepositProviderAdapter = {
       const fileRes = await fetch(url, { cache: "no-store" });
       if (!fileRes.ok) throw new Error(`決済レポートのダウンロードに失敗しました (HTTP ${fileRes.status})`);
 
-      parseTransfers(decode(await fileRes.arrayBuffer())).forEach((t, i) => {
-        if (!t.postedDate || t.postedDate < from || t.postedDate >= to) return;
-        deposits.push({
-          externalId: `${t.settlementId || report.reportId}-${t.transactionId || i}`,
-          depositDate: t.postedDate,
-          amount: t.amount,
-          memo: t.settlementId ? `決済ID ${t.settlementId}` : null,
-        });
+      const s = parseSettlement(decode(await fileRes.arrayBuffer()));
+      const endMs = s.endMs ?? parseCompactTime(report.endTime);
+      if (endMs === null) throw new Error(`決済レポートの期間を読み取れませんでした (${report.reportId})`);
+
+      // 合計が0以下の決済グループは送金されず、次の決済グループに繰り越される
+      if (s.amount <= 0) continue;
+
+      const depositDate = toJstDate(endMs + TRANSFER_DELAY_MS);
+      if (depositDate < from || depositDate >= to) continue;
+
+      const startMs = s.startMs ?? parseCompactTime(report.startTime);
+      const period = startMs !== null ? `${toJstDate(startMs).slice(5)}〜${toJstDate(endMs).slice(5)}` : "";
+      deposits.push({
+        externalId: `settlement-${s.settlementId || report.reportId}`,
+        depositDate,
+        amount: s.amount,
+        memo: `決済グループ ${s.settlementId}${period ? `（${period}）` : ""}`,
       });
     }
 
